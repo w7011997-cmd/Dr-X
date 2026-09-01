@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>NoName</title>
+<title>Chatify</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -14,6 +14,7 @@
     --text: #eaeaf0;
     --text-dim: #8a8a9a;
     --gold: #e0b84b;
+    --danger: #ff8080;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -54,20 +55,29 @@
   #chat-screen { display: none; flex-direction: column; height: 100%; }
   #chat-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px; border-bottom: 1px solid var(--glass-border);
-    background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);
+    padding: 12px 14px; border-bottom: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); gap: 8px;
   }
-  #chat-header .room-info { display: flex; flex-direction: column; }
-  #chat-header .room-info b { font-size: 15px; display: flex; align-items: center; gap: 6px; }
+  #chat-header .room-info { display: flex; flex-direction: column; overflow: hidden; }
+  #chat-header .room-info b { font-size: 15px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #chat-header .room-info span { font-size: 12px; color: var(--text-dim); }
   .admin-badge {
     font-size: 10px; font-weight: 700; color: #1a1230; background: var(--gold);
-    padding: 2px 6px; border-radius: 6px; letter-spacing: 0.3px;
+    padding: 2px 6px; border-radius: 6px; letter-spacing: 0.3px; flex-shrink: 0;
   }
-  #leave-btn {
-    background: rgba(255,80,80,0.15); border: 1px solid rgba(255,80,80,0.3);
-    color: #ff8080; padding: 8px 14px; border-radius: 10px; font-size: 13px;
+  .header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--glass-border);
+    background: var(--glass); color: var(--text); font-size: 18px; display: flex;
+    align-items: center; justify-content: center; position: relative;
   }
+  .icon-btn.danger { color: var(--danger); border-color: rgba(255,80,80,0.3); background: rgba(255,80,80,0.1); }
+  .tab-count-badge {
+    position: absolute; top: -6px; right: -6px; background: var(--accent);
+    color: white; font-size: 10px; font-weight: 700; min-width: 16px; height: 16px;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px;
+  }
+
   #messages {
     flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
   }
@@ -92,14 +102,40 @@
   }
   #file-btn { background: var(--glass); border: 1px solid var(--glass-border); }
   #file-input { display: none; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(5,5,10,0.75); backdrop-filter: blur(6px);
+    display: none; align-items: flex-end; justify-content: center; z-index: 50;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    width: 100%; max-width: 480px; background: #14101f; border: 1px solid var(--glass-border);
+    border-radius: 20px 20px 0 0; padding: 20px; max-height: 80vh; display: flex; flex-direction: column; gap: 12px;
+    position: relative;
+  }
+  .sheet h2 { margin: 0; font-size: 17px; }
+  .sheet-close { position: absolute; top: 14px; right: 16px; color: var(--text-dim); font-size: 20px; }
+  .room-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+  .room-row {
+    display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;
+    border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-border);
+  }
+  .room-row.active { border-color: var(--accent); background: rgba(124,92,255,0.15); }
+  .room-row .room-row-main { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
+  .room-row .room-row-main b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .room-row .room-row-main span { font-size: 11px; color: var(--text-dim); }
+  .room-row-close {
+    width: 30px; height: 30px; border-radius: 8px; border: none; background: rgba(255,80,80,0.15);
+    color: var(--danger); font-size: 14px; flex-shrink: 0; margin-left: 8px;
+  }
 </style>
 </head>
 <body>
 <div id="app">
 
   <div id="join-screen">
-    <h1>NoName</h1>
-    <p>No login. No storage. Nothing saved.<br>Close the tab and it's gone.</p>
+    <h1>Chatify</h1>
+    <p>No login. No server-side storage.<br>Chats live on this device and your peers' devices only.</p>
     <input id="room-code" class="glass-input" placeholder="Room code (share this with others)" autocomplete="off" autocapitalize="off">
     <input id="display-name" class="glass-input" placeholder="Your display name" autocomplete="off" maxlength="20">
     <button id="join-btn" class="btn">Join / Create Room</button>
@@ -112,200 +148,358 @@
         <b id="room-title">Room <span id="my-admin-badge" class="admin-badge" style="display:none;">ADMIN</span></b>
         <span id="peer-count">0 connected</span>
       </div>
-      <button id="leave-btn">Leave</button>
+      <div class="header-actions">
+        <button id="add-room-btn" class="icon-btn" title="Open another room">+</button>
+        <button id="switcher-btn" class="icon-btn" title="Switch rooms">
+          &#9633;<span id="tab-count-badge" class="tab-count-badge">1</span>
+        </button>
+        <button id="leave-btn" class="icon-btn danger" title="Close this room">&#10005;</button>
+      </div>
     </div>
     <div id="messages"></div>
     <div id="input-bar">
       <button id="file-btn">📎</button>
       <input id="file-input" type="file">
       <input id="text-input" placeholder="Message..." autocomplete="off">
-      <button id="send-btn">➤</button>
+      <button id="send-btn">&#10148;</button>
     </div>
   </div>
 
 </div>
 
+<div id="add-room-overlay" class="overlay">
+  <div class="sheet">
+    <span class="sheet-close" id="add-room-close">&#10005;</span>
+    <h2>Open another room</h2>
+    <input id="new-room-code" class="glass-input" placeholder="Room code" autocomplete="off" autocapitalize="off" style="max-width:none;">
+    <button id="new-room-join" class="btn" style="max-width:none;">Open</button>
+  </div>
+</div>
+
+<div id="switcher-overlay" class="overlay">
+  <div class="sheet">
+    <span class="sheet-close" id="switcher-close">&#10005;</span>
+    <h2>Open rooms</h2>
+    <div id="room-list" class="room-list"></div>
+  </div>
+</div>
+
 <script>
+/* ============================================================
+   Chatify — no-login, peer-to-peer group chat with multi-room
+   tabs. Chat text/files travel over WebRTC data channels between
+   devices. Room tabs and each room's message log are cached in
+   this device's localStorage so they survive closing the app —
+   nothing is ever sent to or stored on a server/database.
+   ============================================================ */
+
 const SIGNAL_SERVER_URL = 'wss://dr-x.onrender.com/';
-
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
-
-let ws = null;
-let room = null;
-let myId = Math.random().toString(36).slice(2, 10);
-let myName = '';
-let myIsAdmin = false;
-let historyLoaded = false;
-let messageLog = []; // { name, text, isAdmin } — in-memory only, never persisted
-const peers = new Map();
 
 const $ = (id) => document.getElementById(id);
 
-window.addEventListener('beforeunload', () => sessionStorage.clear());
+let myId = Math.random().toString(36).slice(2, 10);
+let myName = localStorage.getItem('chatify_myname') || '';
+let activeRoomCode = null;
+const rooms = new Map();
 
-$('join-btn').addEventListener('click', joinRoom);
-$('leave-btn').addEventListener('click', () => location.reload());
+function getSavedRoomCodes() {
+  try { return JSON.parse(localStorage.getItem('chatify_rooms') || '[]'); } catch { return []; }
+}
+function saveRoomCodes() {
+  localStorage.setItem('chatify_rooms', JSON.stringify([...rooms.keys()]));
+}
+function loadRoomLog(code) {
+  try { return JSON.parse(localStorage.getItem('chatify_log_' + code) || '[]'); } catch { return []; }
+}
+function saveRoomLog(code) {
+  const room = rooms.get(code);
+  if (!room) return;
+  const trimmed = room.messageLog.slice(-300);
+  localStorage.setItem('chatify_log_' + code, JSON.stringify(trimmed));
+}
+
+window.addEventListener('load', () => {
+  const saved = getSavedRoomCodes();
+  if (saved.length && myName) {
+    saved.forEach((code) => openRoom(code));
+    showChatScreen();
+  }
+});
+
+$('join-btn').addEventListener('click', () => {
+  const code = $('room-code').value.trim() || Math.random().toString(36).slice(2, 8);
+  const name = $('display-name').value.trim() || 'Anon-' + myId.slice(0, 4);
+  myName = name;
+  localStorage.setItem('chatify_myname', myName);
+  openRoom(code);
+  showChatScreen();
+});
+
+$('add-room-btn').addEventListener('click', () => $('add-room-overlay').classList.add('open'));
+$('add-room-close').addEventListener('click', () => $('add-room-overlay').classList.remove('open'));
+$('new-room-join').addEventListener('click', () => {
+  const code = $('new-room-code').value.trim();
+  if (!code) return;
+  if (rooms.has(code)) { switchToRoom(code); }
+  else { openRoom(code); switchToRoom(code); }
+  $('new-room-code').value = '';
+  $('add-room-overlay').classList.remove('open');
+});
+
+$('switcher-btn').addEventListener('click', () => { renderRoomList(); $('switcher-overlay').classList.add('open'); });
+$('switcher-close').addEventListener('click', () => $('switcher-overlay').classList.remove('open'));
+
+$('leave-btn').addEventListener('click', () => closeRoom(activeRoomCode));
 $('send-btn').addEventListener('click', sendText);
 $('text-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendText(); });
 $('file-btn').addEventListener('click', () => $('file-input').click());
 $('file-input').addEventListener('change', sendFile);
 
-function joinRoom() {
-  const code = $('room-code').value.trim() || Math.random().toString(36).slice(2, 8);
-  const name = $('display-name').value.trim() || 'Anon-' + myId.slice(0, 4);
-  room = code;
-  myName = name;
-  sessionStorage.setItem('nn_name', myName);
-
-  $('status-line').textContent = 'Connecting...';
-  ws = new WebSocket(SIGNAL_SERVER_URL);
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'join', room, from: myId, name: myName }));
-    enterChat();
-  };
-  ws.onerror = () => { $('status-line').textContent = 'Could not reach signaling server.'; };
-  ws.onclose = () => { addSystemMsg('Disconnected from signaling server.'); };
-  ws.onmessage = handleSignal;
-}
-
-function enterChat() {
+function showChatScreen() {
   $('join-screen').style.display = 'none';
   $('chat-screen').style.display = 'flex';
-  $('room-title').childNodes[0].textContent = 'Room: ' + room + ' ';
-  addSystemMsg('You joined as ' + myName + '. Messages are peer-to-peer and never stored.');
+}
+function showJoinScreen() {
+  $('chat-screen').style.display = 'none';
+  $('join-screen').style.display = 'flex';
 }
 
-async function handleSignal(event) {
+function openRoom(code) {
+  if (rooms.has(code)) { switchToRoom(code); return; }
+
+  const room = {
+    code, ws: null, peers: new Map(),
+    messageLog: loadRoomLog(code),
+    myIsAdmin: false, historyLoaded: false, unread: 0, connected: false
+  };
+  rooms.set(code, room);
+  saveRoomCodes();
+
+  const ws = new WebSocket(SIGNAL_SERVER_URL);
+  room.ws = ws;
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'join', room: code, from: myId, name: myName }));
+    room.connected = true;
+    if (!activeRoomCode) switchToRoom(code);
+    updateTabCountBadge();
+  };
+  ws.onerror = () => { addSystemMsg(code, 'Could not reach signaling server.'); };
+  ws.onclose = () => { addSystemMsg(code, 'Disconnected from signaling server.'); };
+  ws.onmessage = (event) => handleSignal(code, event);
+
+  if (!activeRoomCode) activeRoomCode = code;
+  updateTabCountBadge();
+}
+
+function closeRoom(code) {
+  const room = rooms.get(code);
+  if (!room) return;
+  room.peers.forEach((p) => p.pc.close());
+  if (room.ws) room.ws.close();
+  rooms.delete(code);
+  saveRoomCodes();
+  localStorage.removeItem('chatify_log_' + code);
+
+  if (activeRoomCode === code) {
+    const remaining = [...rooms.keys()];
+    if (remaining.length) { switchToRoom(remaining[0]); }
+    else { activeRoomCode = null; showJoinScreen(); }
+  }
+  updateTabCountBadge();
+}
+
+function switchToRoom(code) {
+  if (!rooms.has(code)) return;
+  activeRoomCode = code;
+  const room = rooms.get(code);
+  room.unread = 0;
+  $('room-title').childNodes[0].textContent = 'Room: ' + code + ' ';
+  $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
+  updatePeerCount();
+  renderActiveMessages();
+  $('switcher-overlay').classList.remove('open');
+}
+
+function updateTabCountBadge() {
+  $('tab-count-badge').textContent = rooms.size;
+}
+
+function renderRoomList() {
+  const list = $('room-list');
+  list.innerHTML = '';
+  rooms.forEach((room, code) => {
+    const row = document.createElement('div');
+    row.className = 'room-row' + (code === activeRoomCode ? ' active' : '');
+    row.innerHTML =
+      '<div class="room-row-main">' +
+        '<b>' + escapeHtml(code) + (room.myIsAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</b>' +
+        '<span>' + (room.connected ? [...room.peers.values()].filter(p=>p.dc&&p.dc.readyState==='open').length + ' connected' : 'connecting...') + (room.unread ? ' \u00b7 ' + room.unread + ' new' : '') + '</span>' +
+      '</div>' +
+      '<button class="room-row-close" data-code="' + escapeHtml(code) + '">&#10005;</button>';
+    row.addEventListener('click', (e) => {
+      if (e.target.classList.contains('room-row-close')) return;
+      switchToRoom(code);
+    });
+    row.querySelector('.room-row-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeRoom(code);
+      renderRoomList();
+    });
+    list.appendChild(row);
+  });
+}
+
+async function handleSignal(code, event) {
+  const room = rooms.get(code);
+  if (!room) return;
   const msg = JSON.parse(event.data);
 
   if (msg.type === 'joined') {
-    myIsAdmin = msg.isFirst;
-    if (myIsAdmin) {
-      $('my-admin-badge').style.display = 'inline-block';
-      addSystemMsg('You are the Admin of this room.');
-    }
+    room.myIsAdmin = msg.isFirst;
+    if (code === activeRoomCode) $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
+    if (room.myIsAdmin) addSystemMsg(code, 'You are the Admin of this room.');
     return;
   }
-
   if (msg.from === myId) return;
 
   if (msg.type === 'peer-joined') {
-    createPeerConnection(msg.from, true);
+    createPeerConnection(code, msg.from, true);
   } else if (msg.type === 'offer') {
-    const pc = createPeerConnection(msg.from, false);
+    const pc = createPeerConnection(code, msg.from, false);
     await pc.setRemoteDescription(msg.sdp);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    send({ type: 'answer', sdp: answer, to: msg.from });
+    sendSignal(code, { type: 'answer', sdp: answer, to: msg.from });
   } else if (msg.type === 'answer') {
-    const peer = peers.get(msg.from);
+    const peer = room.peers.get(msg.from);
     if (peer) await peer.pc.setRemoteDescription(msg.sdp);
   } else if (msg.type === 'ice') {
-    const peer = peers.get(msg.from);
+    const peer = room.peers.get(msg.from);
     if (peer && msg.candidate) await peer.pc.addIceCandidate(msg.candidate);
   } else if (msg.type === 'peer-left') {
-    peers.delete(msg.from);
-    updatePeerCount();
+    room.peers.delete(msg.from);
+    if (code === activeRoomCode) updatePeerCount();
   }
 }
 
-function send(obj) {
-  ws.send(JSON.stringify({ ...obj, from: myId, room }));
+function sendSignal(code, obj) {
+  const room = rooms.get(code);
+  if (room && room.ws) room.ws.send(JSON.stringify(Object.assign({}, obj, { from: myId, room: code })));
 }
 
-function createPeerConnection(peerId, isInitiator) {
+function createPeerConnection(code, peerId, isInitiator) {
+  const room = rooms.get(code);
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
   const peer = { pc, dc: null, name: 'Peer', isAdmin: false };
-  peers.set(peerId, peer);
+  room.peers.set(peerId, peer);
 
-  pc.onicecandidate = (e) => { if (e.candidate) send({ type: 'ice', candidate: e.candidate, to: peerId }); };
+  pc.onicecandidate = (e) => { if (e.candidate) sendSignal(code, { type: 'ice', candidate: e.candidate, to: peerId }); };
 
   if (isInitiator) {
     const dc = pc.createDataChannel('chat');
-    setupDataChannel(dc, peerId, true);
+    setupDataChannel(code, dc, peerId, true);
     peer.dc = dc;
     pc.createOffer().then((offer) => {
       pc.setLocalDescription(offer);
-      send({ type: 'offer', sdp: offer, to: peerId });
+      sendSignal(code, { type: 'offer', sdp: offer, to: peerId });
     });
   } else {
-    pc.ondatachannel = (e) => { peer.dc = e.channel; setupDataChannel(e.channel, peerId, false); };
+    pc.ondatachannel = (e) => { peer.dc = e.channel; setupDataChannel(code, e.channel, peerId, false); };
   }
 
-  updatePeerCount();
+  if (code === activeRoomCode) updatePeerCount();
   return pc;
 }
 
-function setupDataChannel(dc, peerId, isInitiator) {
+function setupDataChannel(code, dc, peerId, isInitiator) {
+  const room = rooms.get(code);
   dc.onopen = () => {
-    const hello = { kind: 'hello', name: myName, isAdmin: myIsAdmin };
-    // Only an already-present peer (the initiator side) hands over history —
-    // this avoids the new joiner getting duplicate copies from everyone at once.
-    if (isInitiator) hello.history = messageLog;
+    const hello = { kind: 'hello', name: myName, isAdmin: room.myIsAdmin };
+    if (isInitiator && !room.historyLoaded) hello.history = room.messageLog;
     dc.send(JSON.stringify(hello));
-    updatePeerCount();
+    if (code === activeRoomCode) updatePeerCount();
   };
-  dc.onclose = () => updatePeerCount();
+  dc.onclose = () => { if (code === activeRoomCode) updatePeerCount(); };
   dc.onmessage = (e) => {
     const data = JSON.parse(e.data);
+    const peer = room.peers.get(peerId);
+
     if (data.kind === 'hello') {
-      const peer = peers.get(peerId);
       peer.name = data.name;
       peer.isAdmin = data.isAdmin;
-      if (data.history && !historyLoaded) {
-        historyLoaded = true;
-        if (data.history.length) addSystemMsg('Loaded ' + data.history.length + ' earlier message(s).');
-        data.history.forEach((m) => {
-          renderMsg(m.name, m.text, false, m.isAdmin);
-          messageLog.push(m);
-        });
+      if (data.history && !room.historyLoaded) {
+        room.historyLoaded = true;
+        const existingIds = new Set(room.messageLog.map(m => m.id));
+        data.history.forEach((m) => { if (!existingIds.has(m.id)) room.messageLog.push(m); });
+        room.messageLog.sort((a,b) => a.ts - b.ts);
+        saveRoomLog(code);
+        if (code === activeRoomCode) renderActiveMessages();
       }
     } else if (data.kind === 'text') {
-      renderMsg(data.name, data.text, false, data.isAdmin);
-      messageLog.push({ name: data.name, text: data.text, isAdmin: data.isAdmin });
+      const entry = { id: data.id, name: data.name, text: data.text, isAdmin: data.isAdmin, ts: data.ts };
+      room.messageLog.push(entry);
+      saveRoomLog(code);
+      if (code === activeRoomCode) { renderMsg(entry.name, entry.text, false, entry.isAdmin); }
+      else { room.unread++; }
     } else if (data.kind === 'file') {
-      renderFileMsg(data.name, data.filename, data.mime, data.b64, false, data.isAdmin);
+      if (code === activeRoomCode) renderFileMsg(data.name, data.filename, data.mime, data.b64, false, data.isAdmin);
+      else room.unread++;
     }
   };
 }
 
 function sendText() {
+  const room = rooms.get(activeRoomCode);
+  if (!room) return;
   const input = $('text-input');
   const text = input.value.trim();
   if (!text) return;
-  broadcast({ kind: 'text', name: myName, text, isAdmin: myIsAdmin });
-  renderMsg(myName, text, true, myIsAdmin);
-  messageLog.push({ name: myName, text, isAdmin: myIsAdmin });
+  const entry = { id: myId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,6), name: myName, text: text, isAdmin: room.myIsAdmin, ts: Date.now() };
+  broadcast(activeRoomCode, Object.assign({ kind: 'text' }, entry));
+  room.messageLog.push(entry);
+  saveRoomLog(activeRoomCode);
+  renderMsg(myName, text, true, room.myIsAdmin);
   input.value = '';
 }
 
 function sendFile(e) {
+  const room = rooms.get(activeRoomCode);
+  if (!room) return;
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 4 * 1024 * 1024) { addSystemMsg('File too large for this demo (max 4MB).'); return; }
+  if (file.size > 4 * 1024 * 1024) { addSystemMsg(activeRoomCode, 'File too large for this demo (max 4MB).'); return; }
   const reader = new FileReader();
   reader.onload = () => {
     const b64 = reader.result;
-    broadcast({ kind: 'file', name: myName, filename: file.name, mime: file.type, b64, isAdmin: myIsAdmin });
-    renderFileMsg(myName, file.name, file.type, b64, true, myIsAdmin);
-    // Files are intentionally left out of messageLog/history — keeping history
-    // small and in-memory; a late joiner won't get earlier files, only text.
+    broadcast(activeRoomCode, { kind: 'file', name: myName, filename: file.name, mime: file.type, b64: b64, isAdmin: room.myIsAdmin });
+    renderFileMsg(myName, file.name, file.type, b64, true, room.myIsAdmin);
   };
   reader.readAsDataURL(file);
   e.target.value = '';
 }
 
-function broadcast(obj) {
+function broadcast(code, obj) {
+  const room = rooms.get(code);
+  if (!room) return;
   const payload = JSON.stringify(obj);
-  peers.forEach((peer) => { if (peer.dc && peer.dc.readyState === 'open') peer.dc.send(payload); });
+  room.peers.forEach((peer) => { if (peer.dc && peer.dc.readyState === 'open') peer.dc.send(payload); });
+}
+
+function renderActiveMessages() {
+  const room = rooms.get(activeRoomCode);
+  const container = $('messages');
+  container.innerHTML = '';
+  if (!room) return;
+  room.messageLog.forEach((m) => renderMsg(m.name, m.text, m.id.indexOf(myId) === 0, m.isAdmin));
 }
 
 function renderMsg(name, text, mine, isAdmin) {
   const div = document.createElement('div');
   div.className = 'msg ' + (mine ? 'mine' : 'theirs');
   const senderLine = mine ? '' :
-    `<div class="sender">${escapeHtml(name)}${isAdmin ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>`;
+    '<div class="sender">' + escapeHtml(name) + (isAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</div>';
   div.innerHTML = senderLine + escapeHtml(text);
   $('messages').appendChild(div);
   $('messages').scrollTop = $('messages').scrollHeight;
@@ -315,14 +509,15 @@ function renderFileMsg(name, filename, mime, b64, mine, isAdmin) {
   const div = document.createElement('div');
   div.className = 'msg ' + (mine ? 'mine' : 'theirs');
   const senderLine = mine ? '' :
-    `<div class="sender">${escapeHtml(name)}${isAdmin ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>`;
+    '<div class="sender">' + escapeHtml(name) + (isAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</div>';
   div.innerHTML = senderLine +
-    `📎 ${escapeHtml(filename)}<br><a class="file-link" href="${b64}" download="${escapeHtml(filename)}">Download</a>`;
+    '\uD83D\uDCCE ' + escapeHtml(filename) + '<br><a class="file-link" href="' + b64 + '" download="' + escapeHtml(filename) + '">Download</a>';
   $('messages').appendChild(div);
   $('messages').scrollTop = $('messages').scrollHeight;
 }
 
-function addSystemMsg(text) {
+function addSystemMsg(code, text) {
+  if (code !== activeRoomCode) return;
   const div = document.createElement('div');
   div.className = 'msg system';
   div.textContent = text;
@@ -331,7 +526,8 @@ function addSystemMsg(text) {
 }
 
 function updatePeerCount() {
-  const open = [...peers.values()].filter(p => p.dc && p.dc.readyState === 'open').length;
+  const room = rooms.get(activeRoomCode);
+  const open = room ? [...room.peers.values()].filter(p => p.dc && p.dc.readyState === 'open').length : 0;
   $('peer-count').textContent = open + ' connected';
 }
 
