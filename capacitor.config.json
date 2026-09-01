@@ -1,50 +1,9 @@
-nano package.json
-nano .github/workflows/build-apk.yml
-name: Build NoName APK
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch: {}
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Add Android platform
-        run: npx cap add android
-
-      - name: Sync web assets into Android project
-        run: npx cap sync android
-
-      - name: Build debug APK
-        working-directory: android
-        run: chmod +x gradlew && ./gradlew assembleDebug
-
-      - name: Rename APK
-        run: |
-          mkdir -p output
-          cp android/app/build/outputs/apk/debug/app-debug.apk output/NoName.apk
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: NoName-apk
-          path: output/NoName.apk
-
+{
+  "appId": "com.unite.noname",
+  "appName": "NoName",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
