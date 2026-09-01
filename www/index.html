@@ -24,7 +24,6 @@
   }
   #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 
-  /* ---- Join screen ---- */
   #join-screen {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 24px; gap: 16px; text-align: center;
@@ -51,7 +50,6 @@
   .btn:disabled { opacity: 0.5; }
   #status-line { font-size: 13px; color: var(--text-dim); min-height: 18px; }
 
-  /* ---- Chat screen ---- */
   #chat-screen { display: none; flex-direction: column; height: 100%; }
   #chat-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -94,7 +92,6 @@
 <body>
 <div id="app">
 
-  <!-- JOIN SCREEN -->
   <div id="join-screen">
     <h1>NoName</h1>
     <p>No login. No storage. Nothing saved.<br>Close the tab and it's gone.</p>
@@ -104,7 +101,6 @@
     <div id="status-line"></div>
   </div>
 
-  <!-- CHAT SCREEN -->
   <div id="chat-screen">
     <div id="chat-header">
       <div class="room-info">
@@ -125,16 +121,7 @@
 </div>
 
 <script>
-/* ============================================================
-   NoName — ephemeral, no-login, no-database group chat.
-   Signaling only touches the server; all messages/files travel
-   peer-to-peer over WebRTC data channels. Nothing is persisted
-   anywhere — refresh or close the tab and it's gone.
-   ============================================================ */
-
-// !!! EDIT THIS: your Termux/cloudflared (or ngrok) signaling server URL !!!
-// Example: 'wss://your-tunnel-name.trycloudflare.com'
-const SIGNAL_SERVER_URL = 'wss://REPLACE-WITH-YOUR-TUNNEL-URL';
+const SIGNAL_SERVER_URL = 'wss://dr-x.onrender.com/';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
@@ -142,11 +129,10 @@ let ws = null;
 let room = null;
 let myId = Math.random().toString(36).slice(2, 10);
 let myName = '';
-const peers = new Map(); // peerId -> { pc, dc }
+const peers = new Map();
 
 const $ = (id) => document.getElementById(id);
 
-// --- identity is memory-only: sessionStorage clears when the tab closes ---
 window.addEventListener('beforeunload', () => sessionStorage.clear());
 
 $('join-btn').addEventListener('click', joinRoom);
@@ -170,7 +156,7 @@ function joinRoom() {
     ws.send(JSON.stringify({ type: 'join', room, from: myId, name: myName }));
     enterChat();
   };
-  ws.onerror = () => { $('status-line').textContent = 'Could not reach signaling server. Check the tunnel URL.'; };
+  ws.onerror = () => { $('status-line').textContent = 'Could not reach signaling server.'; };
   ws.onclose = () => { addSystemMsg('Disconnected from signaling server.'); };
   ws.onmessage = handleSignal;
 }
@@ -182,7 +168,6 @@ function enterChat() {
   addSystemMsg('You joined as ' + myName + '. Messages are peer-to-peer and never stored.');
 }
 
-// --- Signaling: server only relays these, never sees chat content ---
 async function handleSignal(event) {
   const msg = JSON.parse(event.data);
   if (msg.from === myId) return;
@@ -318,4 +303,3 @@ function escapeHtml(str) {
 </script>
 </body>
 </html>
-
