@@ -1,6 +1,6 @@
 {
   "appId": "com.unite.noname",
-  "appName": "NoName",
+  "appName": "Chatify",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {

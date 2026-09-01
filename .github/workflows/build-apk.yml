@@ -1,4 +1,4 @@
-name: Build NoName APK
+name: Build Chatify APK
 
 on:
   push:
@@ -28,6 +28,9 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Generate app icon from resources/icon.png
+        run: npx @capacitor/assets generate --android
+
       - name: Sync web assets into Android project
         run: npx cap sync android
 
@@ -38,10 +41,10 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p output
-          cp android/app/build/outputs/apk/debug/app-debug.apk output/NoName.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk output/Chatify.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NoName-apk
-          path: output/NoName.apk
+          name: Chatify-apk
+          path: output/Chatify.apk
