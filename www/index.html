@@ -13,6 +13,7 @@
     --accent-glow: rgba(124,92,255,0.4);
     --text: #eaeaf0;
     --text-dim: #8a8a9a;
+    --gold: #e0b84b;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -57,8 +58,12 @@
     background: rgba(255,255,255,0.03); backdrop-filter: blur(12px);
   }
   #chat-header .room-info { display: flex; flex-direction: column; }
-  #chat-header .room-info b { font-size: 15px; }
+  #chat-header .room-info b { font-size: 15px; display: flex; align-items: center; gap: 6px; }
   #chat-header .room-info span { font-size: 12px; color: var(--text-dim); }
+  .admin-badge {
+    font-size: 10px; font-weight: 700; color: #1a1230; background: var(--gold);
+    padding: 2px 6px; border-radius: 6px; letter-spacing: 0.3px;
+  }
   #leave-btn {
     background: rgba(255,80,80,0.15); border: 1px solid rgba(255,80,80,0.3);
     color: #ff8080; padding: 8px 14px; border-radius: 10px; font-size: 13px;
@@ -70,7 +75,7 @@
   .msg.system { align-self: center; max-width: 90%; background: transparent; color: var(--text-dim); font-size: 12px; text-align: center; }
   .msg.mine { align-self: flex-end; background: linear-gradient(135deg, var(--accent), #5c3fd6); border-bottom-right-radius: 4px; }
   .msg.theirs { align-self: flex-start; background: var(--glass); border: 1px solid var(--glass-border); border-bottom-left-radius: 4px; }
-  .msg .sender { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; font-weight: 600; }
+  .msg .sender { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
   .msg .file-link { display: inline-block; margin-top: 4px; color: #cfc4ff; text-decoration: underline; font-size: 13px; }
   #input-bar {
     display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--glass-border);
@@ -104,7 +109,7 @@
   <div id="chat-screen">
     <div id="chat-header">
       <div class="room-info">
-        <b id="room-title">Room</b>
+        <b id="room-title">Room <span id="my-admin-badge" class="admin-badge" style="display:none;">ADMIN</span></b>
         <span id="peer-count">0 connected</span>
       </div>
       <button id="leave-btn">Leave</button>
@@ -129,6 +134,9 @@ let ws = null;
 let room = null;
 let myId = Math.random().toString(36).slice(2, 10);
 let myName = '';
+let myIsAdmin = false;
+let historyLoaded = false;
+let messageLog = []; // { name, text, isAdmin } — in-memory only, never persisted
 const peers = new Map();
 
 const $ = (id) => document.getElementById(id);
@@ -164,12 +172,22 @@ function joinRoom() {
 function enterChat() {
   $('join-screen').style.display = 'none';
   $('chat-screen').style.display = 'flex';
-  $('room-title').textContent = 'Room: ' + room;
+  $('room-title').childNodes[0].textContent = 'Room: ' + room + ' ';
   addSystemMsg('You joined as ' + myName + '. Messages are peer-to-peer and never stored.');
 }
 
 async function handleSignal(event) {
   const msg = JSON.parse(event.data);
+
+  if (msg.type === 'joined') {
+    myIsAdmin = msg.isFirst;
+    if (myIsAdmin) {
+      $('my-admin-badge').style.display = 'inline-block';
+      addSystemMsg('You are the Admin of this room.');
+    }
+    return;
+  }
+
   if (msg.from === myId) return;
 
   if (msg.type === 'peer-joined') {
@@ -198,41 +216,56 @@ function send(obj) {
 
 function createPeerConnection(peerId, isInitiator) {
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-  const peer = { pc, dc: null, name: 'Peer' };
+  const peer = { pc, dc: null, name: 'Peer', isAdmin: false };
   peers.set(peerId, peer);
 
   pc.onicecandidate = (e) => { if (e.candidate) send({ type: 'ice', candidate: e.candidate, to: peerId }); };
 
   if (isInitiator) {
     const dc = pc.createDataChannel('chat');
-    setupDataChannel(dc, peerId);
+    setupDataChannel(dc, peerId, true);
     peer.dc = dc;
     pc.createOffer().then((offer) => {
       pc.setLocalDescription(offer);
       send({ type: 'offer', sdp: offer, to: peerId });
     });
   } else {
-    pc.ondatachannel = (e) => { peer.dc = e.channel; setupDataChannel(e.channel, peerId); };
+    pc.ondatachannel = (e) => { peer.dc = e.channel; setupDataChannel(e.channel, peerId, false); };
   }
 
   updatePeerCount();
   return pc;
 }
 
-function setupDataChannel(dc, peerId) {
+function setupDataChannel(dc, peerId, isInitiator) {
   dc.onopen = () => {
-    dc.send(JSON.stringify({ kind: 'hello', name: myName }));
+    const hello = { kind: 'hello', name: myName, isAdmin: myIsAdmin };
+    // Only an already-present peer (the initiator side) hands over history —
+    // this avoids the new joiner getting duplicate copies from everyone at once.
+    if (isInitiator) hello.history = messageLog;
+    dc.send(JSON.stringify(hello));
     updatePeerCount();
   };
   dc.onclose = () => updatePeerCount();
   dc.onmessage = (e) => {
     const data = JSON.parse(e.data);
     if (data.kind === 'hello') {
-      peers.get(peerId).name = data.name;
+      const peer = peers.get(peerId);
+      peer.name = data.name;
+      peer.isAdmin = data.isAdmin;
+      if (data.history && !historyLoaded) {
+        historyLoaded = true;
+        if (data.history.length) addSystemMsg('Loaded ' + data.history.length + ' earlier message(s).');
+        data.history.forEach((m) => {
+          renderMsg(m.name, m.text, false, m.isAdmin);
+          messageLog.push(m);
+        });
+      }
     } else if (data.kind === 'text') {
-      renderMsg(data.name, data.text, false);
+      renderMsg(data.name, data.text, false, data.isAdmin);
+      messageLog.push({ name: data.name, text: data.text, isAdmin: data.isAdmin });
     } else if (data.kind === 'file') {
-      renderFileMsg(data.name, data.filename, data.mime, data.b64, false);
+      renderFileMsg(data.name, data.filename, data.mime, data.b64, false, data.isAdmin);
     }
   };
 }
@@ -241,8 +274,9 @@ function sendText() {
   const input = $('text-input');
   const text = input.value.trim();
   if (!text) return;
-  broadcast({ kind: 'text', name: myName, text });
-  renderMsg(myName, text, true);
+  broadcast({ kind: 'text', name: myName, text, isAdmin: myIsAdmin });
+  renderMsg(myName, text, true, myIsAdmin);
+  messageLog.push({ name: myName, text, isAdmin: myIsAdmin });
   input.value = '';
 }
 
@@ -253,8 +287,10 @@ function sendFile(e) {
   const reader = new FileReader();
   reader.onload = () => {
     const b64 = reader.result;
-    broadcast({ kind: 'file', name: myName, filename: file.name, mime: file.type, b64 });
-    renderFileMsg(myName, file.name, file.type, b64, true);
+    broadcast({ kind: 'file', name: myName, filename: file.name, mime: file.type, b64, isAdmin: myIsAdmin });
+    renderFileMsg(myName, file.name, file.type, b64, true, myIsAdmin);
+    // Files are intentionally left out of messageLog/history — keeping history
+    // small and in-memory; a late joiner won't get earlier files, only text.
   };
   reader.readAsDataURL(file);
   e.target.value = '';
@@ -265,18 +301,22 @@ function broadcast(obj) {
   peers.forEach((peer) => { if (peer.dc && peer.dc.readyState === 'open') peer.dc.send(payload); });
 }
 
-function renderMsg(name, text, mine) {
+function renderMsg(name, text, mine, isAdmin) {
   const div = document.createElement('div');
   div.className = 'msg ' + (mine ? 'mine' : 'theirs');
-  div.innerHTML = (mine ? '' : `<div class="sender">${escapeHtml(name)}</div>`) + escapeHtml(text);
+  const senderLine = mine ? '' :
+    `<div class="sender">${escapeHtml(name)}${isAdmin ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>`;
+  div.innerHTML = senderLine + escapeHtml(text);
   $('messages').appendChild(div);
   $('messages').scrollTop = $('messages').scrollHeight;
 }
 
-function renderFileMsg(name, filename, mime, b64, mine) {
+function renderFileMsg(name, filename, mime, b64, mine, isAdmin) {
   const div = document.createElement('div');
   div.className = 'msg ' + (mine ? 'mine' : 'theirs');
-  div.innerHTML = (mine ? '' : `<div class="sender">${escapeHtml(name)}</div>`) +
+  const senderLine = mine ? '' :
+    `<div class="sender">${escapeHtml(name)}${isAdmin ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>`;
+  div.innerHTML = senderLine +
     `📎 ${escapeHtml(filename)}<br><a class="file-link" href="${b64}" download="${escapeHtml(filename)}">Download</a>`;
   $('messages').appendChild(div);
   $('messages').scrollTop = $('messages').scrollHeight;

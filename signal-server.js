@@ -1,8 +1,8 @@
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ port: process.env.PORT || 8080 });
 const rooms = new Map();
 
-console.log('Signaling server listening on port 8080');
+console.log('Signaling server listening');
 
 wss.on('connection', (ws) => {
   let currentRoom = null;
@@ -18,12 +18,16 @@ wss.on('connection', (ws) => {
       if (!rooms.has(currentRoom)) rooms.set(currentRoom, new Map());
       const peersInRoom = rooms.get(currentRoom);
 
+      const isFirst = peersInRoom.size === 0;
+
       for (const [, peerWs] of peersInRoom) {
         if (peerWs.readyState === WebSocket.OPEN) {
           peerWs.send(JSON.stringify({ type: 'peer-joined', from: myId }));
         }
       }
       peersInRoom.set(myId, ws);
+
+      ws.send(JSON.stringify({ type: 'joined', isFirst }));
       return;
     }
 
