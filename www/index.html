@@ -117,6 +117,18 @@
     padding: 2px 6px; border-radius: 6px; letter-spacing: 0.3px; flex-shrink: 0;
   }
   .empty-note { color: var(--text-dim); font-size: 13px; text-align: center; padding: 30px 0; }
+  #chat-id-chip-row {
+    display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 12px; margin-bottom: 4px;
+    position: sticky; top: 0; z-index: 5; background: linear-gradient(180deg, #0a0a0f 70%, transparent);
+  }
+  .id-chip {
+    flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 16px;
+    background: var(--glass); border: 1px solid var(--glass-border); font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .id-chip.active { background: rgba(124,92,255,0.25); border-color: var(--accent); }
+  .id-chip .chip-close { color: var(--text-dim); font-size: 12px; margin-left: 2px; }
+  .msg.highlight-flash { animation: flashHighlight 1.2s ease; }
+  @keyframes flashHighlight { 0%, 100% { box-shadow: none; } 25% { box-shadow: 0 0 0 3px var(--gold); } }
 
   #fab {
     position: absolute; right: 18px; bottom: 18px; width: 52px; height: 52px; border-radius: 26px;
@@ -238,6 +250,7 @@
         <span class="notice-close" id="ic-approved-dismiss">&#10005;</span>
       </div>
       <button id="ic-fixed-btn" class="btn gold-btn" style="display:none;">&#10024; Join the Inner Circle</button>
+      <div id="chat-id-chip-row" style="display:none;"></div>
       <div id="home-list"></div>
     </div>
     <button id="fab">+</button>
@@ -358,7 +371,7 @@
    and nothing is stored in any database.
    ============================================================ */
 
-const SIGNAL_SERVER_URL = 'wss://dr-x.onrender.com/';
+const SIGNAL_SERVER_URL = 'wss://dr-x.onrender.com';
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 const INNER_CIRCLE_CODE = 'innercircle';
 
@@ -370,6 +383,7 @@ let myName = localStorage.getItem('chatify_myname') || '';
 let activeRoomCode = null;
 let replyingTo = null;
 let homeTab = 'rooms';
+let chatFilterSelection = null; // a dmhub room's code, 'direct', or null
 let icApprovedPending = false;
 let currentNotice = null; // { text, ts } or null
 const rooms = new Map();
@@ -499,30 +513,31 @@ function renderHome() {
   $('tab-chats').classList.toggle('active', homeTab === 'chats');
   $('ic-fixed-btn').style.display = homeTab === 'rooms' ? 'block' : 'none';
   $('ic-approved-banner').style.display = (icApprovedPending && homeTab === 'rooms') ? 'flex' : 'none';
+  $('chat-id-chip-row').style.display = homeTab === 'chats' ? 'flex' : 'none';
 
-  const wantCategory = homeTab === 'rooms' ? 'room' : 'chat';
+  if (homeTab === 'rooms') {
+    renderRoomsList();
+  } else {
+    renderChatIdChips();
+    renderChatsList();
+  }
+}
+
+function renderRoomsList() {
   const list = $('home-list');
   list.innerHTML = '';
-  const matching = [...rooms.values()].filter((r) => r.category === wantCategory);
+  const matching = [...rooms.values()].filter((r) => r.category === 'room');
 
   if (matching.length === 0) {
-    list.innerHTML = '<div class="empty-note">' + (wantCategory === 'room' ? 'No rooms open yet. Tap + to create or join one.' : 'No chats yet. Tap + to start a one-on-one chat.') + '</div>';
+    list.innerHTML = '<div class="empty-note">No rooms open yet. Tap + to create or join one.</div>';
     return;
   }
-
   matching.forEach((room) => {
     const row = document.createElement('div');
     row.className = 'list-row';
-    let subtitle;
-    if (room.mode === 'dmhub') {
-      const totalUnread = [...room.threads.values()].reduce((sum, t) => sum + t.unread, 0);
-      subtitle = room.threads.size + ' conversation' + (room.threads.size === 1 ? '' : 's');
-      if (totalUnread) subtitle += ' \u00b7 ' + totalUnread + ' new';
-    } else {
-      const last = room.messageLog[room.messageLog.length - 1];
-      subtitle = last ? (last.name + ': ' + last.text).slice(0, 42) : (room.connected ? 'Connected' : 'Connecting...');
-      if (room.unread) subtitle += ' \u00b7 ' + room.unread + ' new';
-    }
+    const last = room.messageLog[room.messageLog.length - 1];
+    let subtitle = last ? (last.name + ': ' + last.text).slice(0, 42) : (room.connected ? 'Connected' : 'Connecting...');
+    if (room.unread) subtitle += ' \u00b7 ' + room.unread + ' new';
     row.innerHTML =
       '<div class="list-row-main">' +
         '<b>' + escapeHtml(room.code) + (room.myIsAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</b>' +
@@ -531,6 +546,89 @@ function renderHome() {
       '<button class="list-row-close" data-code="' + escapeHtml(room.code) + '">&#10005;</button>';
     row.addEventListener('click', (e) => { if (e.target.classList.contains('list-row-close')) return; openChatView(room.code); });
     row.querySelector('.list-row-close').addEventListener('click', (e) => { e.stopPropagation(); closeRoom(room.code); });
+    list.appendChild(row);
+  });
+}
+
+function renderChatIdChips() {
+  const ownedIds = [...rooms.values()].filter((r) => r.category === 'chat' && r.mode === 'dmhub');
+  const hasDirect = [...rooms.values()].some((r) => r.category === 'chat' && r.mode === 'group');
+
+  const validSelections = ownedIds.map((r) => r.code).concat(hasDirect ? ['direct'] : []);
+  if (!validSelections.includes(chatFilterSelection)) {
+    chatFilterSelection = ownedIds.length ? ownedIds[0].code : (hasDirect ? 'direct' : null);
+  }
+
+  const row = $('chat-id-chip-row');
+  row.innerHTML = '';
+  ownedIds.forEach((room) => {
+    const chip = document.createElement('div');
+    chip.className = 'id-chip' + (chatFilterSelection === room.code ? ' active' : '');
+    chip.innerHTML = '<span>' + escapeHtml(room.code) + '</span><span class="chip-close" data-code="' + escapeHtml(room.code) + '">&#10005;</span>';
+    chip.addEventListener('click', (e) => { if (e.target.classList.contains('chip-close')) return; chatFilterSelection = room.code; renderHome(); });
+    chip.querySelector('.chip-close').addEventListener('click', (e) => { e.stopPropagation(); closeRoom(room.code); });
+    row.appendChild(chip);
+  });
+  if (hasDirect) {
+    const chip = document.createElement('div');
+    chip.className = 'id-chip' + (chatFilterSelection === 'direct' ? ' active' : '');
+    chip.innerHTML = '<span>Direct chats</span>';
+    chip.addEventListener('click', () => { chatFilterSelection = 'direct'; renderHome(); });
+    row.appendChild(chip);
+  }
+}
+
+function renderChatsList() {
+  const list = $('home-list');
+  list.innerHTML = '';
+
+  if (chatFilterSelection === null) {
+    list.innerHTML = '<div class="empty-note">No chats yet. Tap + to start a one-on-one chat.</div>';
+    return;
+  }
+
+  if (chatFilterSelection === 'direct') {
+    const guestRooms = [...rooms.values()].filter((r) => r.category === 'chat' && r.mode === 'group');
+    guestRooms.forEach((room) => {
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      const last = room.messageLog[room.messageLog.length - 1];
+      let subtitle = last ? (last.name + ': ' + last.text).slice(0, 42) : (room.connected ? 'Connected' : 'Connecting...');
+      if (room.unread) subtitle += ' \u00b7 ' + room.unread + ' new';
+      row.innerHTML =
+        '<div class="list-row-main"><b>' + escapeHtml(room.code) + '</b><span>' + escapeHtml(subtitle) + '</span></div>' +
+        '<button class="list-row-close" data-code="' + escapeHtml(room.code) + '">&#10005;</button>';
+      row.addEventListener('click', (e) => { if (e.target.classList.contains('list-row-close')) return; openChatView(room.code); });
+      row.querySelector('.list-row-close').addEventListener('click', (e) => { e.stopPropagation(); closeRoom(room.code); });
+      list.appendChild(row);
+    });
+    if (guestRooms.length === 0) list.innerHTML = '<div class="empty-note">No direct chats yet.</div>';
+    return;
+  }
+
+  // a specific owned Chat ID — list every thread that's messaged it
+  const room = rooms.get(chatFilterSelection);
+  if (!room) { list.innerHTML = '<div class="empty-note">This Chat ID was closed.</div>'; return; }
+  if (room.threads.size === 0) {
+    list.innerHTML = '<div class="empty-note">Nobody has messaged "' + escapeHtml(room.code) + '" yet.</div>';
+    return;
+  }
+  [...room.threads.entries()].forEach(([peerId, thread]) => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    const last = thread.messageLog[thread.messageLog.length - 1];
+    let subtitle = (last ? last.text : 'No messages yet').slice(0, 42);
+    if (thread.unread) subtitle += ' \u00b7 ' + thread.unread + ' new';
+    row.innerHTML =
+      '<div class="list-row-main"><b>' + escapeHtml(thread.name) + '</b><span>' + escapeHtml(subtitle) + '</span></div>' +
+      '<button class="list-row-close" data-peer="' + escapeHtml(peerId) + '">&#10005;</button>';
+    row.addEventListener('click', (e) => {
+      if (e.target.classList.contains('list-row-close')) return;
+      room.activeThreadPeerId = peerId;
+      thread.unread = 0;
+      openChatView(room.code);
+    });
+    row.querySelector('.list-row-close').addEventListener('click', (e) => { e.stopPropagation(); endThread(room.code, peerId); });
     list.appendChild(row);
   });
 }
@@ -604,15 +702,20 @@ $('chat-create-btn').addEventListener('click', async () => {
 /* ---------- Inner Circle ---------- */
 $('ic-fixed-btn').addEventListener('click', () => {
   if (getAdminKey()) { openRoom(INNER_CIRCLE_CODE, 'room', 'group', myName); openChatView(INNER_CIRCLE_CODE); return; }
-  $('inner-circle-status').textContent = '';
-  $('inner-circle-actions').style.display = 'flex';
+  if (!$('inner-circle-dismiss')) { $('inner-circle-status').textContent = ''; resetInnerCircleActions(); }
   $('inner-circle-overlay').classList.add('open');
 });
 $('inner-circle-close').addEventListener('click', () => $('inner-circle-overlay').classList.remove('open'));
-$('inner-circle-exit').addEventListener('click', () => $('inner-circle-overlay').classList.remove('open'));
-$('inner-circle-request').addEventListener('click', () => {
-  $('inner-circle-actions').style.display = 'none';
-  $('inner-circle-status').textContent = 'Waiting for approval...';
+function resetInnerCircleActions() {
+  $('inner-circle-actions').innerHTML = '<button id="inner-circle-exit" class="btn ghost-btn">Exit</button><button id="inner-circle-request" class="btn gold-btn">Request to join</button>';
+  $('inner-circle-exit').addEventListener('click', () => $('inner-circle-overlay').classList.remove('open'));
+  $('inner-circle-request').addEventListener('click', sendInnerCircleRequest);
+}
+
+function sendInnerCircleRequest() {
+  $('inner-circle-actions').innerHTML = '<button id="inner-circle-dismiss" class="btn ghost-btn">Close</button>';
+  $('inner-circle-status').textContent = 'Request sent. We\u2019ll let you know once the Admin responds \u2014 you can close this and keep using the app.';
+  $('inner-circle-dismiss').addEventListener('click', () => $('inner-circle-overlay').classList.remove('open'));
   const probe = new WebSocket(SIGNAL_SERVER_URL);
   probe.onopen = () => probe.send(JSON.stringify({ type: 'join-request', room: INNER_CIRCLE_CODE, from: myId, name: myName }));
   probe.onmessage = (e) => {
@@ -625,16 +728,23 @@ $('inner-circle-request').addEventListener('click', () => {
       setTimeout(() => { $('inner-circle-overlay').classList.remove('open'); homeTab = 'rooms'; showScreen('home'); renderHome(); }, 500);
     } else if (msg.type === 'join-denied') {
       probe.close();
+      $('inner-circle-overlay').classList.add('open');
       $('inner-circle-status').textContent = 'Your request was not approved.';
-      $('inner-circle-actions').style.display = 'flex';
+      resetInnerCircleActions();
     } else if (msg.type === 'join-request-failed') {
       probe.close();
+      $('inner-circle-overlay').classList.add('open');
       $('inner-circle-status').textContent = msg.reason || 'Could not send request right now.';
-      $('inner-circle-actions').style.display = 'flex';
+      resetInnerCircleActions();
     }
   };
-  probe.onerror = () => { $('inner-circle-status').textContent = 'Could not reach the server.'; $('inner-circle-actions').style.display = 'flex'; };
-});
+  probe.onerror = () => {
+    $('inner-circle-overlay').classList.add('open');
+    $('inner-circle-status').textContent = 'Could not reach the server.';
+    resetInnerCircleActions();
+  };
+}
+$('inner-circle-request').addEventListener('click', sendInnerCircleRequest);
 
 /* ---------- admin panel ---------- */
 $('requests-btn').addEventListener('click', () => {
@@ -720,6 +830,21 @@ function openRoom(code, category, mode, displayName) {
   ws.onmessage = (event) => handleSignal(code, event);
 }
 
+function endThread(code, peerId) {
+  const room = rooms.get(code);
+  if (!room) return;
+  const thread = room.threads.get(peerId);
+  const ok = confirm('End this conversation with ' + (thread ? thread.name : 'this person') + '? This disconnects them and clears the chat for both sides.');
+  if (!ok) return;
+  const peer = room.peers.get(peerId);
+  if (peer) { peer.pc.close(); room.peers.delete(peerId); }
+  room.threads.delete(peerId);
+  saveThreads(code);
+  if (room.activeThreadPeerId === peerId) room.activeThreadPeerId = null;
+  renderChatBody();
+  renderHome();
+}
+
 function closeRoom(code) {
   const room = rooms.get(code);
   if (!room) return;
@@ -758,7 +883,7 @@ async function handleSignal(code, event) {
     room.isOwner = !!msg.isOwner;
     room.myIsAdmin = msg.isFirst || room.isOwner;
     if (code === activeRoomCode) {
-      $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
+      $('my-admin-badge').style.display = (room.category === 'room' && room.myIsAdmin) ? 'inline-block' : 'none';
       $('requests-btn').style.display = room.isOwner ? 'flex' : 'none';
     }
     renderHome();
@@ -827,14 +952,43 @@ function setupDataChannel(code, dc, peerId, isInitiator) {
   dc.onopen = () => {
     const peer = room.peers.get(peerId);
     if (!peer) return;
-    const hello = { kind: 'hello', name: room.displayName, isAdmin: room.myIsAdmin };
+    const hello = { kind: 'hello', name: room.displayName, isAdmin: room.category === 'room' && room.myIsAdmin };
     if (isInitiator && room.mode === 'group' && !room.historyLoaded) hello.history = room.messageLog;
     dc.send(JSON.stringify(hello));
     peer.outbox.forEach((payload) => dc.send(payload));
     peer.outbox = [];
     if (code === activeRoomCode) renderChatBody();
   };
-  dc.onclose = () => { if (code === activeRoomCode) renderChatBody(); };
+  dc.onclose = () => {
+    const peer = room.peers.get(peerId);
+    if (room.mode === 'dmhub' && room.threads.has(peerId)) {
+      const name = room.threads.get(peerId).name;
+      const wasOpenThread = room.activeThreadPeerId === peerId;
+      room.threads.delete(peerId);
+      saveThreads(code);
+      room.peers.delete(peerId);
+      if (code === activeRoomCode) {
+        if (wasOpenThread) {
+          alert(name + ' has disconnected from this chat. The conversation has been cleared.');
+          room.activeThreadPeerId = null;
+        }
+        renderChatBody();
+      }
+      renderHome();
+    } else if (room.category === 'chat' && room.mode === 'group') {
+      room.messageLog = [];
+      saveRoomLog(code);
+      room.peers.delete(peerId);
+      if (code === activeRoomCode) {
+        alert('This user has disconnected from this chat. The conversation has been cleared.');
+        renderChatBody();
+      }
+      renderHome();
+    } else {
+      room.peers.delete(peerId);
+      if (code === activeRoomCode) renderChatBody();
+    }
+  };
   dc.onmessage = (e) => {
     const data = JSON.parse(e.data);
     const peer = room.peers.get(peerId);
@@ -898,7 +1052,7 @@ function sendText() {
   if (!text) return;
   const entry = {
     id: myId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-    name: room.displayName, text: text, isAdmin: room.myIsAdmin, ts: Date.now(),
+    name: room.displayName, text: text, isAdmin: room.category === 'room' && room.myIsAdmin, ts: Date.now(),
     replyTo: replyingTo ? { id: replyingTo.id, name: replyingTo.name, text: replyingTo.text } : null
   };
 
@@ -938,7 +1092,7 @@ function sendFile(e) {
   const reader = new FileReader();
   reader.onload = () => {
     const b64 = reader.result;
-    const payload = { kind: 'file', name: room.displayName, filename: file.name, mime: file.type, b64: b64, isAdmin: room.myIsAdmin };
+    const payload = { kind: 'file', name: room.displayName, filename: file.name, mime: file.type, b64: b64, isAdmin: room.category === 'room' && room.myIsAdmin };
     if (room.mode === 'dmhub' && room.activeThreadPeerId) {
       const peer = room.peers.get(room.activeThreadPeerId);
       if (peer) sendToPeer(peer, JSON.stringify(payload));
@@ -955,7 +1109,14 @@ $('file-input').addEventListener('change', sendFile);
 $('send-btn').addEventListener('click', sendText);
 $('text-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendText(); });
 $('reply-cancel').addEventListener('click', cancelReply);
-$('leave-btn').addEventListener('click', () => closeRoom(activeRoomCode));
+$('leave-btn').addEventListener('click', () => {
+  const room = rooms.get(activeRoomCode);
+  if (room && room.mode === 'dmhub' && room.activeThreadPeerId !== null) {
+    endThread(activeRoomCode, room.activeThreadPeerId);
+  } else {
+    closeRoom(activeRoomCode);
+  }
+});
 
 $('chat-back-btn').addEventListener('click', () => {
   const room = rooms.get(activeRoomCode);
@@ -992,13 +1153,17 @@ function renderChatBody() {
       row.className = 'list-row';
       const last = thread.messageLog[thread.messageLog.length - 1];
       const subtitle = (last ? last.text : 'No messages yet').slice(0, 42) + (thread.unread ? ' \u00b7 ' + thread.unread + ' new' : '');
-      row.innerHTML = '<div class="list-row-main"><b>' + escapeHtml(thread.name) + '</b><span>' + escapeHtml(subtitle) + '</span></div>';
-      row.addEventListener('click', () => {
+      row.innerHTML =
+        '<div class="list-row-main"><b>' + escapeHtml(thread.name) + '</b><span>' + escapeHtml(subtitle) + '</span></div>' +
+        '<button class="list-row-close" data-peer="' + escapeHtml(peerId) + '">&#10005;</button>';
+      row.addEventListener('click', (e) => {
+        if (e.target.classList.contains('list-row-close')) return;
         room.activeThreadPeerId = peerId;
         thread.unread = 0;
         renderChatBody();
         renderHome();
       });
+      row.querySelector('.list-row-close').addEventListener('click', (e) => { e.stopPropagation(); endThread(room.code, peerId); });
       container.appendChild(row);
     });
     return;
@@ -1018,7 +1183,7 @@ function renderChatBody() {
 
   // plain group room
   $('room-title').childNodes[0].textContent = 'Room: ' + room.code + ' ';
-  $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
+  $('my-admin-badge').style.display = (room.category === 'room' && room.myIsAdmin) ? 'inline-block' : 'none';
   const openPeers = [...room.peers.values()].filter((p) => p.dc && p.dc.readyState === 'open').length;
   $('peer-count').textContent = openPeers + ' connected';
   room.messageLog.forEach((m) => renderMsg(Object.assign({}, m, { mine: m.id.indexOf(myId) === 0 })));
@@ -1028,12 +1193,51 @@ function renderMsg(entry) {
   const { id, name, text, mine, isAdmin, replyTo } = entry;
   const div = document.createElement('div');
   div.className = 'msg ' + (mine ? 'mine' : 'theirs');
+  div.dataset.msgId = id;
   const senderLine = mine ? '' : '<div class="sender">' + escapeHtml(name) + (isAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</div>';
-  const quoteLine = replyTo ? '<div class="quote">' + escapeHtml(replyTo.name) + ': ' + escapeHtml(replyTo.text.slice(0, 60)) + '</div>' : '';
+  const quoteLine = replyTo ? '<div class="quote" data-target-id="' + escapeHtml(replyTo.id) + '">' + escapeHtml(replyTo.name) + ': ' + escapeHtml(replyTo.text.slice(0, 60)) + '</div>' : '';
   div.innerHTML = senderLine + quoteLine + escapeHtml(text);
-  div.addEventListener('click', () => startReply({ id, name, text, mine }));
+
+  const quoteEl = div.querySelector('.quote');
+  if (quoteEl) {
+    quoteEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = $('messages').querySelector('[data-msg-id="' + quoteEl.dataset.targetId + '"]');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('highlight-flash');
+        setTimeout(() => target.classList.remove('highlight-flash'), 1200);
+      }
+    });
+  }
+
+  attachSwipeToReply(div, { id, name, text, mine });
   $('messages').appendChild(div);
   $('messages').scrollTop = $('messages').scrollHeight;
+}
+
+function attachSwipeToReply(div, entry) {
+  let startX = 0, startY = 0, dragging = false, dx = 0;
+  div.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; dragging = true; dx = 0;
+  }, { passive: true });
+  div.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const t = e.touches[0];
+    const deltaX = t.clientX - startX;
+    const deltaY = t.clientY - startY;
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+    if (deltaX > 0) { dx = Math.min(deltaX, 70); div.style.transform = 'translateX(' + dx + 'px)'; }
+  }, { passive: true });
+  div.addEventListener('touchend', () => {
+    dragging = false;
+    div.style.transition = 'transform 0.15s ease';
+    div.style.transform = 'translateX(0)';
+    setTimeout(() => { div.style.transition = ''; }, 160);
+    if (dx > 45) startReply(entry);
+    dx = 0;
+  });
 }
 
 function renderFileMsg(name, filename, mime, b64, mine, isAdmin) {
