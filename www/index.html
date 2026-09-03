@@ -15,6 +15,7 @@
     --text-dim: #8a8a9a;
     --gold: #e0b84b;
     --danger: #ff8080;
+    --ok: #8ef0a8;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -24,52 +25,128 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow: hidden;
   }
-  #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  #shell { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  .screen { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; }
+  .screen.active { display: flex; }
 
-  #join-screen {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 24px; gap: 16px; text-align: center;
+  /* ---- global notice banner (all screens) ---- */
+  #notice-banner {
+    display: none; align-items: flex-start; gap: 10px; padding: 10px 14px;
+    background: linear-gradient(135deg, #4a2fa8, #2c1a66); border-bottom: 1px solid var(--glass-border);
+    font-size: 12.5px; line-height: 1.4; flex-shrink: 0;
   }
-  #join-screen h1 {
-    font-size: 28px; margin: 0 0 4px; letter-spacing: -0.5px;
-    background: linear-gradient(135deg, #b8a8ff, #7c5cff);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  #join-screen p { color: var(--text-dim); margin: 0 0 12px; font-size: 14px; }
+  #notice-banner .notice-text { flex: 1; white-space: pre-wrap; }
+  #notice-banner .notice-close { color: rgba(255,255,255,0.7); font-size: 15px; flex-shrink: 0; }
+
+  /* ---- shared basics ---- */
   .glass-input {
-    width: 100%; max-width: 320px; padding: 14px 16px; border-radius: 14px;
+    width: 100%; padding: 14px 16px; border-radius: 14px;
     border: 1px solid var(--glass-border); background: var(--glass);
     color: var(--text); font-size: 16px; outline: none; backdrop-filter: blur(12px);
   }
   .glass-input::placeholder { color: var(--text-dim); }
   .btn {
-    width: 100%; max-width: 320px; padding: 14px 16px; border-radius: 14px; border: none;
+    width: 100%; padding: 14px 16px; border-radius: 14px; border: none;
     background: linear-gradient(135deg, var(--accent), #5c3fd6);
     color: white; font-size: 16px; font-weight: 600; cursor: pointer;
     box-shadow: 0 4px 20px var(--accent-glow);
   }
   .btn:active { transform: scale(0.98); }
-  .btn:disabled { opacity: 0.5; }
-  #status-line { font-size: 13px; color: var(--text-dim); min-height: 18px; }
+  .btn.gold-btn { background: linear-gradient(135deg, var(--gold), #b5852e); box-shadow: 0 4px 20px rgba(224,184,75,0.35); color: #1a1230; }
+  .btn.ghost-btn { background: var(--glass); border: 1px solid var(--glass-border); box-shadow: none; color: var(--text); }
+  .btn-row { display: flex; gap: 8px; width: 100%; }
+  .availability-msg { font-size: 12px; min-height: 16px; text-align: left; }
+  .availability-msg.error { color: var(--danger); }
+  .availability-msg.ok { color: var(--ok); }
 
-  #chat-screen { display: none; flex-direction: column; height: 100%; }
-  #chat-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 14px; border-bottom: 1px solid var(--glass-border);
-    background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); gap: 8px;
+  /* ---- onboarding ---- */
+  #onboarding-screen { align-items: center; justify-content: center; padding: 24px; gap: 16px; text-align: center; }
+  #onboarding-screen h1 {
+    font-size: 30px; margin: 0 0 4px; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #b8a8ff, #7c5cff); -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  #chat-header .room-info { display: flex; flex-direction: column; overflow: hidden; }
-  #chat-header .room-info b { font-size: 15px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #chat-header .room-info span { font-size: 12px; color: var(--text-dim); }
+  #onboarding-screen p { color: var(--text-dim); margin: 0 0 8px; font-size: 14px; max-width: 320px; }
+  #onboarding-screen .glass-input, #onboarding-screen .btn { max-width: 320px; }
+
+  /* ---- home ---- */
+  #home-header { padding: 16px 18px 8px; flex-shrink: 0; }
+  #home-header h1 {
+    font-size: 24px; margin: 0; letter-spacing: -0.5px; cursor: pointer;
+    background: linear-gradient(135deg, #b8a8ff, #7c5cff); -webkit-background-clip: text; background-clip: text; color: transparent;
+    display: inline-block;
+  }
+  #home-header p { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); }
+
+  #action-icons { display: flex; gap: 12px; padding: 4px 18px 14px; flex-shrink: 0; }
+  .action-icon {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    padding: 16px 8px; border-radius: 18px; background: var(--glass); border: 1px solid var(--glass-border);
+    font-size: 12.5px; font-weight: 600; color: var(--text);
+  }
+  .action-icon .emoji { font-size: 26px; }
+
+  #home-tabs { display: flex; padding: 0 18px; gap: 6px; flex-shrink: 0; }
+  .home-tab-btn {
+    flex: 1; padding: 10px; text-align: center; border-radius: 12px 12px 0 0; font-size: 13px; font-weight: 600;
+    color: var(--text-dim); background: transparent; border: none; border-bottom: 2px solid transparent;
+  }
+  .home-tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  #home-list-area { flex: 1; overflow-y: auto; padding: 10px 18px 90px; position: relative; }
+  #ic-approved-banner {
+    display: none; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 10px;
+    background: rgba(224,184,75,0.15); border: 1px solid rgba(224,184,75,0.35); border-radius: 12px; font-size: 13px;
+  }
+  #ic-approved-banner .notice-close { margin-left: auto; color: var(--text-dim); }
+  #ic-fixed-btn { margin-bottom: 10px; position: sticky; top: 0; z-index: 5; }
+
+  .list-row {
+    display: flex; align-items: center; justify-content: space-between; padding: 13px 14px; margin-bottom: 8px;
+    border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-border);
+  }
+  .list-row-main { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
+  .list-row-main b { font-size: 15px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-row-main span { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-row-close {
+    width: 30px; height: 30px; border-radius: 8px; border: none; background: rgba(255,80,80,0.15);
+    color: var(--danger); font-size: 14px; flex-shrink: 0; margin-left: 8px;
+  }
+  .unread-pill { background: var(--accent); color: white; font-size: 10.5px; font-weight: 700; border-radius: 10px; padding: 1px 7px; flex-shrink: 0; }
   .admin-badge {
     font-size: 10px; font-weight: 700; color: #1a1230; background: var(--gold);
     padding: 2px 6px; border-radius: 6px; letter-spacing: 0.3px; flex-shrink: 0;
   }
+  .empty-note { color: var(--text-dim); font-size: 13px; text-align: center; padding: 30px 0; }
+
+  #fab {
+    position: absolute; right: 18px; bottom: 18px; width: 52px; height: 52px; border-radius: 26px;
+    background: linear-gradient(135deg, var(--accent), #5c3fd6); color: white; font-size: 26px; border: none;
+    box-shadow: 0 6px 20px var(--accent-glow); display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ---- full-page create screens ---- */
+  .form-header { display: flex; align-items: center; gap: 10px; padding: 16px 18px; flex-shrink: 0; border-bottom: 1px solid var(--glass-border); }
+  .back-arrow { font-size: 20px; color: var(--text); background: none; border: none; padding: 4px 8px; }
+  .form-header h2 { margin: 0; font-size: 17px; }
+  .form-body { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .form-toggle-link { font-size: 13px; color: var(--accent); text-align: center; padding: 6px 0; }
+  .form-divider { text-align: center; color: var(--text-dim); font-size: 12px; margin: 6px 0; }
+
+  /* ---- chat screen ---- */
+  #chat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-bottom: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.03); gap: 8px; flex-shrink: 0;
+  }
+  #chat-header .left-cluster { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+  #chat-header .room-info { display: flex; flex-direction: column; overflow: hidden; }
+  #chat-header .room-info b { font-size: 15px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #chat-header .room-info span { font-size: 12px; color: var(--text-dim); }
   .header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .icon-btn {
     width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--glass-border);
     background: var(--glass); color: var(--text); font-size: 18px; display: flex;
-    align-items: center; justify-content: center; position: relative;
+    align-items: center; justify-content: center; position: relative; flex-shrink: 0;
   }
   .icon-btn.danger { color: var(--danger); border-color: rgba(255,80,80,0.3); background: rgba(255,80,80,0.1); }
   .tab-count-badge {
@@ -78,23 +155,29 @@
     border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px;
   }
 
-  #messages {
-    flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
-  }
+  #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .msg { max-width: 78%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.35; word-wrap: break-word; }
   .msg.system { align-self: center; max-width: 90%; background: transparent; color: var(--text-dim); font-size: 12px; text-align: center; }
   .msg.mine { align-self: flex-end; background: linear-gradient(135deg, var(--accent), #5c3fd6); border-bottom-right-radius: 4px; }
   .msg.theirs { align-self: flex-start; background: var(--glass); border: 1px solid var(--glass-border); border-bottom-left-radius: 4px; }
   .msg .sender { font-size: 11px; color: var(--text-dim); margin-bottom: 3px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
   .msg .file-link { display: inline-block; margin-top: 4px; color: #cfc4ff; text-decoration: underline; font-size: 13px; }
-  #input-bar {
-    display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--glass-border);
-    background: rgba(255,255,255,0.03);
+  .msg .quote {
+    border-left: 3px solid rgba(255,255,255,0.4); padding: 4px 8px; margin-bottom: 6px;
+    font-size: 12px; color: rgba(255,255,255,0.75); background: rgba(0,0,0,0.15); border-radius: 6px;
   }
-  #text-input {
-    flex: 1; padding: 12px 16px; border-radius: 20px; border: 1px solid var(--glass-border);
-    background: var(--glass); color: var(--text); font-size: 15px; outline: none;
+  .msg.theirs .quote { border-left-color: var(--accent); color: var(--text-dim); background: rgba(0,0,0,0.2); }
+
+  #reply-bar {
+    display: none; align-items: center; gap: 10px; padding: 8px 14px;
+    background: rgba(124,92,255,0.12); border-top: 1px solid var(--glass-border); font-size: 12px; flex-shrink: 0;
   }
+  #reply-bar .reply-label { color: var(--accent); font-weight: 700; flex-shrink: 0; }
+  #reply-preview-text { flex: 1; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #reply-cancel { color: var(--text-dim); font-size: 16px; flex-shrink: 0; }
+
+  #input-bar { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); flex-shrink: 0; }
+  #text-input { flex: 1; padding: 12px 16px; border-radius: 20px; border: 1px solid var(--glass-border); background: var(--glass); color: var(--text); font-size: 15px; outline: none; }
   #send-btn, #file-btn {
     width: 44px; height: 44px; border-radius: 50%; border: none;
     background: var(--accent); color: white; font-size: 18px; display: flex;
@@ -103,62 +186,130 @@
   #file-btn { background: var(--glass); border: 1px solid var(--glass-border); }
   #file-input { display: none; }
 
-  .overlay {
-    position: fixed; inset: 0; background: rgba(5,5,10,0.75); backdrop-filter: blur(6px);
-    display: none; align-items: flex-end; justify-content: center; z-index: 50;
-  }
+  /* ---- overlays ---- */
+  .overlay { position: fixed; inset: 0; background: rgba(5,5,10,0.75); backdrop-filter: blur(6px); display: none; align-items: flex-end; justify-content: center; z-index: 50; }
   .overlay.open { display: flex; }
-  .sheet {
-    width: 100%; max-width: 480px; background: #14101f; border: 1px solid var(--glass-border);
-    border-radius: 20px 20px 0 0; padding: 20px; max-height: 80vh; display: flex; flex-direction: column; gap: 12px;
-    position: relative;
-  }
+  .sheet { width: 100%; max-width: 480px; background: #14101f; border: 1px solid var(--glass-border); border-radius: 20px 20px 0 0; padding: 20px; max-height: 85vh; display: flex; flex-direction: column; gap: 12px; position: relative; overflow-y: auto; }
   .sheet h2 { margin: 0; font-size: 17px; }
+  .sheet h3 { margin: 10px 0 0; font-size: 14px; color: var(--text-dim); }
   .sheet-close { position: absolute; top: 14px; right: 16px; color: var(--text-dim); font-size: 20px; }
-  .room-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
-  .room-row {
-    display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;
-    border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-border);
-  }
-  .room-row.active { border-color: var(--accent); background: rgba(124,92,255,0.15); }
-  .room-row .room-row-main { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
-  .room-row .room-row-main b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .room-row .room-row-main span { font-size: 11px; color: var(--text-dim); }
-  .room-row-close {
-    width: 30px; height: 30px; border-radius: 8px; border: none; background: rgba(255,80,80,0.15);
-    color: var(--danger); font-size: 14px; flex-shrink: 0; margin-left: 8px;
-  }
+  .request-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-border); gap: 8px; margin-bottom: 8px; }
+  .request-row b { font-size: 14px; }
+  .request-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .request-actions button { padding: 8px 12px; border-radius: 8px; border: none; font-size: 12px; font-weight: 700; }
+  .approve-btn { background: rgba(142,240,168,0.15); color: var(--ok); }
+  .deny-btn { background: rgba(255,80,80,0.15); color: var(--danger); }
+  #notice-textarea { width: 100%; min-height: 70px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--glass); color: var(--text); font-size: 14px; font-family: inherit; resize: vertical; }
 </style>
 </head>
 <body>
-<div id="app">
+<div id="shell">
 
-  <div id="join-screen">
-    <h1>Chatify</h1>
-    <p>No login. No server-side storage.<br>Chats live on this device and your peers' devices only.</p>
-    <input id="room-code" class="glass-input" placeholder="Room code (share this with others)" autocomplete="off" autocapitalize="off">
-    <input id="display-name" class="glass-input" placeholder="Your display name" autocomplete="off" maxlength="20">
-    <button id="join-btn" class="btn">Join / Create Room</button>
-    <div id="status-line"></div>
+  <div id="notice-banner">
+    <div class="notice-text" id="notice-text"></div>
+    <span class="notice-close" id="notice-dismiss">&#10005;</span>
   </div>
 
-  <div id="chat-screen">
+  <!-- ONBOARDING -->
+  <div id="onboarding-screen" class="screen">
+    <h1>Chatify</h1>
+    <p>No login. No server-side storage. Chats live only on your device and your peers' devices.</p>
+    <input id="nickname-input" class="glass-input" placeholder="Enter a nickname" autocomplete="off" maxlength="20">
+    <button id="onboarding-continue" class="btn">Continue</button>
+  </div>
+
+  <!-- HOME -->
+  <div id="home-screen" class="screen">
+    <div id="home-header">
+      <h1 id="app-title">Chatify</h1>
+      <p>Peer-to-peer chat. Nothing stored on a server.</p>
+    </div>
+    <div id="action-icons">
+      <button id="icon-one-on-one" class="action-icon"><span class="emoji">&#128172;</span>One-on-One</button>
+      <button id="icon-group" class="action-icon"><span class="emoji">&#128101;</span>Group Room</button>
+    </div>
+    <div id="home-tabs">
+      <button id="tab-rooms" class="home-tab-btn active">Rooms</button>
+      <button id="tab-chats" class="home-tab-btn">Chat lists</button>
+    </div>
+    <div id="home-list-area">
+      <div id="ic-approved-banner">
+        <span>&#127881; Your request to join the Inner Circle was approved!</span>
+        <span class="notice-close" id="ic-approved-dismiss">&#10005;</span>
+      </div>
+      <button id="ic-fixed-btn" class="btn gold-btn" style="display:none;">&#10024; Join the Inner Circle</button>
+      <div id="home-list"></div>
+    </div>
+    <button id="fab">+</button>
+  </div>
+
+  <!-- CREATE / JOIN ROOM -->
+  <div id="create-room-screen" class="screen">
+    <div class="form-header">
+      <button class="back-arrow" id="room-form-back">&#8592;</button>
+      <h2>Group Room</h2>
+    </div>
+    <div class="form-body">
+      <input id="room-name-input" class="glass-input" placeholder="Your name in this room" autocomplete="off" maxlength="20">
+      <input id="room-code-input" class="glass-input" placeholder="Room code" autocomplete="off" autocapitalize="off">
+      <div class="btn-row">
+        <button id="room-create-btn" class="btn">Create Room</button>
+        <button id="room-join-btn" class="btn ghost-btn">Join Room</button>
+      </div>
+      <div id="room-form-msg" class="availability-msg"></div>
+    </div>
+  </div>
+
+  <!-- CREATE / JOIN ONE-ON-ONE -->
+  <div id="create-chat-screen" class="screen">
+    <div class="form-header">
+      <button class="back-arrow" id="chat-form-back">&#8592;</button>
+      <h2>One-on-One Chat</h2>
+    </div>
+    <div class="form-body">
+      <input id="chat-name-input" class="glass-input" placeholder="Your name for this chat" autocomplete="off" maxlength="20">
+
+      <div id="chat-mode-other">
+        <input id="their-chat-id-input" class="glass-input" placeholder="Their Chat ID" autocomplete="off" autocapitalize="off">
+        <button id="chat-connect-btn" class="btn" style="margin-top:10px;">Chat</button>
+      </div>
+
+      <div class="form-toggle-link" id="chat-mode-toggle">Or create your own Chat ID instead</div>
+
+      <div id="chat-mode-own" style="display:none;">
+        <input id="my-chat-id-input" class="glass-input" placeholder="Choose your Chat ID (e.g. James01)" autocomplete="off" autocapitalize="off">
+        <button id="chat-create-btn" class="btn" style="margin-top:10px;">Create Chat ID</button>
+      </div>
+
+      <div id="chat-form-msg" class="availability-msg"></div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div id="chat-screen" class="screen">
     <div id="chat-header">
-      <div class="room-info">
-        <b id="room-title">Room <span id="my-admin-badge" class="admin-badge" style="display:none;">ADMIN</span></b>
-        <span id="peer-count">0 connected</span>
+      <div class="left-cluster">
+        <button id="chat-back-btn" class="icon-btn" title="Back">&#8592;</button>
+        <div class="room-info">
+          <b id="room-title">Room <span id="my-admin-badge" class="admin-badge" style="display:none;">ADMIN</span></b>
+          <span id="peer-count">0 connected</span>
+        </div>
       </div>
       <div class="header-actions">
-        <button id="add-room-btn" class="icon-btn" title="Open another room">+</button>
-        <button id="switcher-btn" class="icon-btn" title="Switch rooms">
-          &#9633;<span id="tab-count-badge" class="tab-count-badge">1</span>
+        <button id="requests-btn" class="icon-btn" title="Admin panel" style="display:none;">
+          &#128276;<span id="requests-badge" class="tab-count-badge" style="display:none;">0</span>
         </button>
         <button id="leave-btn" class="icon-btn danger" title="Close this room">&#10005;</button>
       </div>
     </div>
     <div id="messages"></div>
+    <div id="reply-bar">
+      <span class="reply-label">Replying</span>
+      <span id="reply-preview-text"></span>
+      <span id="reply-cancel">&#10005;</span>
+    </div>
     <div id="input-bar">
-      <button id="file-btn">📎</button>
+      <button id="file-btn">&#128206;</button>
       <input id="file-input" type="file">
       <input id="text-input" placeholder="Message..." autocomplete="off">
       <button id="send-btn">&#10148;</button>
@@ -167,47 +318,77 @@
 
 </div>
 
-<div id="add-room-overlay" class="overlay">
+<!-- Inner Circle popup -->
+<div id="inner-circle-overlay" class="overlay">
   <div class="sheet">
-    <span class="sheet-close" id="add-room-close">&#10005;</span>
-    <h2>Open another room</h2>
-    <input id="new-room-code" class="glass-input" placeholder="Room code" autocomplete="off" autocapitalize="off" style="max-width:none;">
-    <button id="new-room-join" class="btn" style="max-width:none;">Open</button>
+    <span class="sheet-close" id="inner-circle-close">&#10005;</span>
+    <h2>&#10024; The Inner Circle</h2>
+    <p style="color:var(--text-dim); font-size:14px; margin:0;">The Inner Circle was created for the purpose of connection and to help each other.</p>
+    <div id="inner-circle-status" style="font-size:13px; color:var(--text-dim); min-height:16px;"></div>
+    <div id="inner-circle-actions" class="btn-row">
+      <button id="inner-circle-exit" class="btn ghost-btn">Exit</button>
+      <button id="inner-circle-request" class="btn gold-btn">Request to join</button>
+    </div>
   </div>
 </div>
 
-<div id="switcher-overlay" class="overlay">
+<!-- Admin panel: join requests + global notice -->
+<div id="admin-panel-overlay" class="overlay">
   <div class="sheet">
-    <span class="sheet-close" id="switcher-close">&#10005;</span>
-    <h2>Open rooms</h2>
-    <div id="room-list" class="room-list"></div>
+    <span class="sheet-close" id="admin-panel-close">&#10005;</span>
+    <h2>Admin Panel</h2>
+    <h3>Join requests</h3>
+    <div id="requests-list"></div>
+    <h3>Post a notice to all users</h3>
+    <textarea id="notice-textarea" placeholder="Notice to all users&#10;Do not use this app for scam/fraud."></textarea>
+    <div class="btn-row">
+      <button id="post-notice-btn" class="btn">Post Notice</button>
+      <button id="clear-notice-btn" class="btn ghost-btn">Clear Notice</button>
+    </div>
   </div>
 </div>
-
 <script>
 /* ============================================================
-   Chatify — no-login, peer-to-peer group chat with multi-room
-   tabs. Chat text/files travel over WebRTC data channels between
-   devices. Room tabs and each room's message log are cached in
-   this device's localStorage so they survive closing the app —
-   nothing is ever sent to or stored on a server/database.
+   Chatify — no-login, peer-to-peer group + 1-on-1 chat.
+   All chat text/files travel over WebRTC data channels. Room
+   list, chat logs, and DM threads are cached in this device's
+   localStorage so they survive closing the app. The signaling
+   server only relays handshakes, availability checks, Inner
+   Circle join requests, and admin notices — never chat content,
+   and nothing is stored in any database.
    ============================================================ */
 
 const SIGNAL_SERVER_URL = 'wss://dr-x.onrender.com/';
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const INNER_CIRCLE_CODE = 'innercircle';
 
 const $ = (id) => document.getElementById(id);
 
-let myId = Math.random().toString(36).slice(2, 10);
+let myId = localStorage.getItem('chatify_myid');
+if (!myId) { myId = Math.random().toString(36).slice(2, 10); localStorage.setItem('chatify_myid', myId); }
 let myName = localStorage.getItem('chatify_myname') || '';
 let activeRoomCode = null;
+let replyingTo = null;
+let homeTab = 'rooms';
+let icApprovedPending = false;
+let currentNotice = null; // { text, ts } or null
 const rooms = new Map();
 
-function getSavedRoomCodes() {
+function getAdminKey() { return localStorage.getItem('chatify_admin_key') || null; }
+
+/* ---------- screen navigation ---------- */
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach((el) => el.classList.remove('active'));
+  $(name + '-screen').classList.add('active');
+}
+
+/* ---------- persistence ---------- */
+function getSavedRooms() {
   try { return JSON.parse(localStorage.getItem('chatify_rooms') || '[]'); } catch { return []; }
 }
 function saveRoomCodes() {
-  localStorage.setItem('chatify_rooms', JSON.stringify([...rooms.keys()]));
+  const list = [...rooms.values()].map((r) => ({ code: r.code, category: r.category, mode: r.mode, displayName: r.displayName }));
+  localStorage.setItem('chatify_rooms', JSON.stringify(list));
 }
 function loadRoomLog(code) {
   try { return JSON.parse(localStorage.getItem('chatify_log_' + code) || '[]'); } catch { return []; }
@@ -215,63 +396,310 @@ function loadRoomLog(code) {
 function saveRoomLog(code) {
   const room = rooms.get(code);
   if (!room) return;
-  const trimmed = room.messageLog.slice(-300);
-  localStorage.setItem('chatify_log_' + code, JSON.stringify(trimmed));
+  localStorage.setItem('chatify_log_' + code, JSON.stringify(room.messageLog.slice(-300)));
+}
+function loadThreads(code) {
+  try {
+    const obj = JSON.parse(localStorage.getItem('chatify_threads_' + code) || '{}');
+    const map = new Map();
+    Object.keys(obj).forEach((peerId) => map.set(peerId, { name: obj[peerId].name, messageLog: obj[peerId].messageLog || [], unread: 0 }));
+    return map;
+  } catch { return new Map(); }
+}
+function saveThreads(code) {
+  const room = rooms.get(code);
+  if (!room) return;
+  const obj = {};
+  room.threads.forEach((thread, peerId) => { obj[peerId] = { name: thread.name, messageLog: thread.messageLog.slice(-300) }; });
+  localStorage.setItem('chatify_threads_' + code, JSON.stringify(obj));
 }
 
-window.addEventListener('load', () => {
-  const saved = getSavedRoomCodes();
-  if (saved.length && myName) {
-    saved.forEach((code) => openRoom(code));
-    showChatScreen();
+/* ---------- availability check ---------- */
+function checkAvailability(code) {
+  return new Promise((resolve) => {
+    const probe = new WebSocket(SIGNAL_SERVER_URL);
+    let settled = false;
+    const finish = (val) => { if (!settled) { settled = true; probe.close(); resolve(val); } };
+    probe.onopen = () => probe.send(JSON.stringify({ type: 'check-availability', code }));
+    probe.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'availability-result' && msg.code === code) finish(msg.available);
+    };
+    probe.onerror = () => finish(null);
+    setTimeout(() => finish(null), 6000);
+  });
+}
+
+/* ---------- global notice beacon ---------- */
+let beaconWs = null;
+function connectBeacon() {
+  beaconWs = new WebSocket(SIGNAL_SERVER_URL);
+  beaconWs.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'notice-update') {
+      currentNotice = msg.text ? { text: msg.text, ts: msg.ts } : null;
+      renderNoticeBanner();
+    }
+  };
+  beaconWs.onclose = () => { setTimeout(connectBeacon, 5000); };
+  beaconWs.onerror = () => {};
+}
+function renderNoticeBanner() {
+  const dismissedTs = Number(localStorage.getItem('chatify_dismissed_notice_ts') || 0);
+  if (currentNotice && currentNotice.ts !== dismissedTs) {
+    $('notice-text').textContent = currentNotice.text;
+    $('notice-banner').style.display = 'flex';
+  } else {
+    $('notice-banner').style.display = 'none';
+  }
+}
+$('notice-dismiss').addEventListener('click', () => {
+  if (currentNotice) localStorage.setItem('chatify_dismissed_notice_ts', String(currentNotice.ts));
+  $('notice-banner').style.display = 'none';
+});
+
+/* ---------- onboarding ---------- */
+$('onboarding-continue').addEventListener('click', () => {
+  const name = $('nickname-input').value.trim();
+  if (!name) return;
+  myName = name;
+  localStorage.setItem('chatify_myname', myName);
+  connectBeacon();
+  showScreen('home');
+  renderHome();
+});
+
+/* Hidden gesture: tap the "Chatify" title 5 times fast to enter your admin
+   key once. Saved only on this device — never shipped in the shared APK. */
+let titleTapCount = 0, titleTapTimer = null;
+$('app-title').addEventListener('click', () => {
+  titleTapCount++;
+  clearTimeout(titleTapTimer);
+  titleTapTimer = setTimeout(() => { titleTapCount = 0; }, 1500);
+  if (titleTapCount >= 5) {
+    titleTapCount = 0;
+    const existing = getAdminKey();
+    const key = prompt(existing ? 'Admin key is set. Enter a new one to replace it, or Cancel to keep it.' : 'Enter your Inner Circle admin key:');
+    if (key) localStorage.setItem('chatify_admin_key', key.trim());
   }
 });
 
-$('join-btn').addEventListener('click', () => {
-  const code = $('room-code').value.trim() || Math.random().toString(36).slice(2, 8);
-  const name = $('display-name').value.trim() || 'Anon-' + myId.slice(0, 4);
-  myName = name;
-  localStorage.setItem('chatify_myname', myName);
-  openRoom(code);
-  showChatScreen();
+/* ---------- home screen ---------- */
+$('tab-rooms').addEventListener('click', () => { homeTab = 'rooms'; renderHome(); });
+$('tab-chats').addEventListener('click', () => { homeTab = 'chats'; renderHome(); });
+
+$('icon-one-on-one').addEventListener('click', () => openCreateChatScreen());
+$('icon-group').addEventListener('click', () => openCreateRoomScreen());
+$('fab').addEventListener('click', () => { if (homeTab === 'rooms') openCreateRoomScreen(); else openCreateChatScreen(); });
+
+$('ic-approved-dismiss').addEventListener('click', () => { icApprovedPending = false; renderHome(); });
+
+function renderHome() {
+  $('tab-rooms').classList.toggle('active', homeTab === 'rooms');
+  $('tab-chats').classList.toggle('active', homeTab === 'chats');
+  $('ic-fixed-btn').style.display = homeTab === 'rooms' ? 'block' : 'none';
+  $('ic-approved-banner').style.display = (icApprovedPending && homeTab === 'rooms') ? 'flex' : 'none';
+
+  const wantCategory = homeTab === 'rooms' ? 'room' : 'chat';
+  const list = $('home-list');
+  list.innerHTML = '';
+  const matching = [...rooms.values()].filter((r) => r.category === wantCategory);
+
+  if (matching.length === 0) {
+    list.innerHTML = '<div class="empty-note">' + (wantCategory === 'room' ? 'No rooms open yet. Tap + to create or join one.' : 'No chats yet. Tap + to start a one-on-one chat.') + '</div>';
+    return;
+  }
+
+  matching.forEach((room) => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    let subtitle;
+    if (room.mode === 'dmhub') {
+      const totalUnread = [...room.threads.values()].reduce((sum, t) => sum + t.unread, 0);
+      subtitle = room.threads.size + ' conversation' + (room.threads.size === 1 ? '' : 's');
+      if (totalUnread) subtitle += ' \u00b7 ' + totalUnread + ' new';
+    } else {
+      const last = room.messageLog[room.messageLog.length - 1];
+      subtitle = last ? (last.name + ': ' + last.text).slice(0, 42) : (room.connected ? 'Connected' : 'Connecting...');
+      if (room.unread) subtitle += ' \u00b7 ' + room.unread + ' new';
+    }
+    row.innerHTML =
+      '<div class="list-row-main">' +
+        '<b>' + escapeHtml(room.code) + (room.myIsAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</b>' +
+        '<span>' + escapeHtml(subtitle) + '</span>' +
+      '</div>' +
+      '<button class="list-row-close" data-code="' + escapeHtml(room.code) + '">&#10005;</button>';
+    row.addEventListener('click', (e) => { if (e.target.classList.contains('list-row-close')) return; openChatView(room.code); });
+    row.querySelector('.list-row-close').addEventListener('click', (e) => { e.stopPropagation(); closeRoom(room.code); });
+    list.appendChild(row);
+  });
+}
+
+function openCreateRoomScreen() {
+  $('room-name-input').value = myName;
+  $('room-code-input').value = '';
+  $('room-form-msg').textContent = '';
+  showScreen('create-room');
+}
+function openCreateChatScreen() {
+  $('chat-name-input').value = myName;
+  $('their-chat-id-input').value = '';
+  $('my-chat-id-input').value = '';
+  $('chat-form-msg').textContent = '';
+  $('chat-mode-own').style.display = 'none';
+  $('chat-mode-other').style.display = 'block';
+  $('chat-mode-toggle').textContent = 'Or create your own Chat ID instead';
+  showScreen('create-chat');
+}
+
+$('room-form-back').addEventListener('click', () => { showScreen('home'); renderHome(); });
+$('chat-form-back').addEventListener('click', () => { showScreen('home'); renderHome(); });
+
+$('chat-mode-toggle').addEventListener('click', () => {
+  const showingOwn = $('chat-mode-own').style.display !== 'none';
+  $('chat-mode-own').style.display = showingOwn ? 'none' : 'block';
+  $('chat-mode-other').style.display = showingOwn ? 'block' : 'none';
+  $('chat-mode-toggle').textContent = showingOwn ? 'Or create your own Chat ID instead' : 'Or chat someone by their ID instead';
 });
 
-$('add-room-btn').addEventListener('click', () => $('add-room-overlay').classList.add('open'));
-$('add-room-close').addEventListener('click', () => $('add-room-overlay').classList.remove('open'));
-$('new-room-join').addEventListener('click', () => {
-  const code = $('new-room-code').value.trim();
+$('room-create-btn').addEventListener('click', async () => {
+  const name = $('room-name-input').value.trim() || myName;
+  const code = $('room-code-input').value.trim() || Math.random().toString(36).slice(2, 8);
+  const msgEl = $('room-form-msg');
+  msgEl.textContent = 'Checking...'; msgEl.className = 'availability-msg';
+  const available = await checkAvailability(code);
+  if (available === false) { msgEl.textContent = 'Not available \u2014 try a different code.'; msgEl.className = 'availability-msg error'; return; }
+  msgEl.textContent = '';
+  openRoom(code, 'room', 'group', name);
+  openChatView(code);
+});
+$('room-join-btn').addEventListener('click', () => {
+  const name = $('room-name-input').value.trim() || myName;
+  const code = $('room-code-input').value.trim();
+  if (!code) { $('room-form-msg').textContent = 'Enter a room code to join.'; $('room-form-msg').className = 'availability-msg error'; return; }
+  openRoom(code, 'room', 'group', name);
+  openChatView(code);
+});
+
+$('chat-connect-btn').addEventListener('click', () => {
+  const name = $('chat-name-input').value.trim() || myName;
+  const code = $('their-chat-id-input').value.trim();
   if (!code) return;
-  if (rooms.has(code)) { switchToRoom(code); }
-  else { openRoom(code); switchToRoom(code); }
-  $('new-room-code').value = '';
-  $('add-room-overlay').classList.remove('open');
+  openRoom(code, 'chat', 'group', name);
+  openChatView(code);
+});
+$('chat-create-btn').addEventListener('click', async () => {
+  const name = $('chat-name-input').value.trim() || myName;
+  const code = $('my-chat-id-input').value.trim();
+  const msgEl = $('chat-form-msg');
+  if (!code) { msgEl.textContent = 'Choose a Chat ID first.'; msgEl.className = 'availability-msg error'; return; }
+  msgEl.textContent = 'Checking...'; msgEl.className = 'availability-msg';
+  const available = await checkAvailability(code);
+  if (available === false) { msgEl.textContent = 'Not available \u2014 try a different ID.'; msgEl.className = 'availability-msg error'; return; }
+  msgEl.textContent = '';
+  openRoom(code, 'chat', 'dmhub', name);
+  openChatView(code);
 });
 
-$('switcher-btn').addEventListener('click', () => { renderRoomList(); $('switcher-overlay').classList.add('open'); });
-$('switcher-close').addEventListener('click', () => $('switcher-overlay').classList.remove('open'));
+/* ---------- Inner Circle ---------- */
+$('ic-fixed-btn').addEventListener('click', () => {
+  if (getAdminKey()) { openRoom(INNER_CIRCLE_CODE, 'room', 'group', myName); openChatView(INNER_CIRCLE_CODE); return; }
+  $('inner-circle-status').textContent = '';
+  $('inner-circle-actions').style.display = 'flex';
+  $('inner-circle-overlay').classList.add('open');
+});
+$('inner-circle-close').addEventListener('click', () => $('inner-circle-overlay').classList.remove('open'));
+$('inner-circle-exit').addEventListener('click', () => $('inner-circle-overlay').classList.remove('open'));
+$('inner-circle-request').addEventListener('click', () => {
+  $('inner-circle-actions').style.display = 'none';
+  $('inner-circle-status').textContent = 'Waiting for approval...';
+  const probe = new WebSocket(SIGNAL_SERVER_URL);
+  probe.onopen = () => probe.send(JSON.stringify({ type: 'join-request', room: INNER_CIRCLE_CODE, from: myId, name: myName }));
+  probe.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'join-approved') {
+      probe.close();
+      $('inner-circle-status').textContent = 'Approved!';
+      openRoom(INNER_CIRCLE_CODE, 'room', 'group', myName);
+      icApprovedPending = true;
+      setTimeout(() => { $('inner-circle-overlay').classList.remove('open'); homeTab = 'rooms'; showScreen('home'); renderHome(); }, 500);
+    } else if (msg.type === 'join-denied') {
+      probe.close();
+      $('inner-circle-status').textContent = 'Your request was not approved.';
+      $('inner-circle-actions').style.display = 'flex';
+    } else if (msg.type === 'join-request-failed') {
+      probe.close();
+      $('inner-circle-status').textContent = msg.reason || 'Could not send request right now.';
+      $('inner-circle-actions').style.display = 'flex';
+    }
+  };
+  probe.onerror = () => { $('inner-circle-status').textContent = 'Could not reach the server.'; $('inner-circle-actions').style.display = 'flex'; };
+});
 
-$('leave-btn').addEventListener('click', () => closeRoom(activeRoomCode));
-$('send-btn').addEventListener('click', sendText);
-$('text-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendText(); });
-$('file-btn').addEventListener('click', () => $('file-input').click());
-$('file-input').addEventListener('change', sendFile);
+/* ---------- admin panel ---------- */
+$('requests-btn').addEventListener('click', () => {
+  renderRequestsList();
+  $('notice-textarea').value = currentNotice ? currentNotice.text : '';
+  $('admin-panel-overlay').classList.add('open');
+});
+$('admin-panel-close').addEventListener('click', () => $('admin-panel-overlay').classList.remove('open'));
+$('post-notice-btn').addEventListener('click', () => {
+  const text = $('notice-textarea').value.trim();
+  const key = getAdminKey();
+  if (!text || !key || !beaconWs) return;
+  beaconWs.send(JSON.stringify({ type: 'post-notice', text, adminKey: key }));
+  $('admin-panel-overlay').classList.remove('open');
+});
+$('clear-notice-btn').addEventListener('click', () => {
+  const key = getAdminKey();
+  if (!key || !beaconWs) return;
+  beaconWs.send(JSON.stringify({ type: 'clear-notice', adminKey: key }));
+  $('admin-panel-overlay').classList.remove('open');
+});
 
-function showChatScreen() {
-  $('join-screen').style.display = 'none';
-  $('chat-screen').style.display = 'flex';
+function renderRequestsList() {
+  const room = rooms.get(activeRoomCode);
+  const list = $('requests-list');
+  list.innerHTML = '';
+  if (!room || room.pendingRequests.length === 0) {
+    list.innerHTML = '<div class="empty-note">No pending requests right now.</div>';
+    return;
+  }
+  room.pendingRequests.forEach((req) => {
+    const row = document.createElement('div');
+    row.className = 'request-row';
+    row.innerHTML =
+      '<b>' + escapeHtml(req.name) + '</b>' +
+      '<div class="request-actions">' +
+        '<button class="approve-btn" data-from="' + escapeHtml(req.from) + '">Approve</button>' +
+        '<button class="deny-btn" data-from="' + escapeHtml(req.from) + '">Deny</button>' +
+      '</div>';
+    row.querySelector('.approve-btn').addEventListener('click', () => decideRequest(req.from, 'approve'));
+    row.querySelector('.deny-btn').addEventListener('click', () => decideRequest(req.from, 'deny'));
+    list.appendChild(row);
+  });
 }
-function showJoinScreen() {
-  $('chat-screen').style.display = 'none';
-  $('join-screen').style.display = 'flex';
+function decideRequest(fromId, decision) {
+  const room = rooms.get(activeRoomCode);
+  if (!room || !room.ws) return;
+  room.ws.send(JSON.stringify({ type: 'join-decision', room: activeRoomCode, to: fromId, decision }));
+  room.pendingRequests = room.pendingRequests.filter((r) => r.from !== fromId);
+  updateRequestsBadge();
+  renderRequestsList();
 }
 
-function openRoom(code) {
-  if (rooms.has(code)) { switchToRoom(code); return; }
+/* ---------- room lifecycle ---------- */
+function openRoom(code, category, mode, displayName) {
+  if (rooms.has(code)) return;
 
   const room = {
-    code, ws: null, peers: new Map(),
-    messageLog: loadRoomLog(code),
-    myIsAdmin: false, historyLoaded: false, unread: 0, connected: false
+    code, category, mode, displayName: displayName || myName,
+    ws: null, peers: new Map(),
+    messageLog: mode === 'group' ? loadRoomLog(code) : [],
+    threads: mode === 'dmhub' ? loadThreads(code) : null,
+    activeThreadPeerId: null,
+    myIsAdmin: false, isOwner: false, historyLoaded: false, unread: 0, connected: false,
+    pendingRequests: []
   };
   rooms.set(code, room);
   saveRoomCodes();
@@ -280,92 +708,73 @@ function openRoom(code) {
   room.ws = ws;
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'join', room: code, from: myId, name: myName }));
+    const payload = { type: 'join', room: code, from: myId, name: room.displayName };
+    const key = getAdminKey();
+    if (key) payload.adminKey = key;
+    ws.send(JSON.stringify(payload));
     room.connected = true;
-    if (!activeRoomCode) switchToRoom(code);
-    updateTabCountBadge();
+    renderHome();
   };
-  ws.onerror = () => { addSystemMsg(code, 'Could not reach signaling server.'); };
-  ws.onclose = () => { addSystemMsg(code, 'Disconnected from signaling server.'); };
+  ws.onerror = () => {};
+  ws.onclose = () => {};
   ws.onmessage = (event) => handleSignal(code, event);
-
-  if (!activeRoomCode) activeRoomCode = code;
-  updateTabCountBadge();
 }
 
 function closeRoom(code) {
   const room = rooms.get(code);
   if (!room) return;
+  const ok = confirm('Close "' + code + '"? This disconnects you and clears its saved history on this device.');
+  if (!ok) return;
   room.peers.forEach((p) => p.pc.close());
   if (room.ws) room.ws.close();
   rooms.delete(code);
   saveRoomCodes();
   localStorage.removeItem('chatify_log_' + code);
+  localStorage.removeItem('chatify_threads_' + code);
 
-  if (activeRoomCode === code) {
-    const remaining = [...rooms.keys()];
-    if (remaining.length) { switchToRoom(remaining[0]); }
-    else { activeRoomCode = null; showJoinScreen(); }
-  }
-  updateTabCountBadge();
+  if (activeRoomCode === code) { activeRoomCode = null; showScreen('home'); }
+  renderHome();
 }
 
-function switchToRoom(code) {
-  if (!rooms.has(code)) return;
-  activeRoomCode = code;
+function openChatView(code) {
   const room = rooms.get(code);
+  if (!room) return;
+  activeRoomCode = code;
   room.unread = 0;
-  $('room-title').childNodes[0].textContent = 'Room: ' + code + ' ';
-  $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
-  updatePeerCount();
-  renderActiveMessages();
-  $('switcher-overlay').classList.remove('open');
+  $('requests-btn').style.display = room.isOwner ? 'flex' : 'none';
+  updateRequestsBadge();
+  cancelReply();
+  showScreen('chat');
+  renderChatBody();
 }
 
-function updateTabCountBadge() {
-  $('tab-count-badge').textContent = rooms.size;
-}
-
-function renderRoomList() {
-  const list = $('room-list');
-  list.innerHTML = '';
-  rooms.forEach((room, code) => {
-    const row = document.createElement('div');
-    row.className = 'room-row' + (code === activeRoomCode ? ' active' : '');
-    row.innerHTML =
-      '<div class="room-row-main">' +
-        '<b>' + escapeHtml(code) + (room.myIsAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</b>' +
-        '<span>' + (room.connected ? [...room.peers.values()].filter(p=>p.dc&&p.dc.readyState==='open').length + ' connected' : 'connecting...') + (room.unread ? ' \u00b7 ' + room.unread + ' new' : '') + '</span>' +
-      '</div>' +
-      '<button class="room-row-close" data-code="' + escapeHtml(code) + '">&#10005;</button>';
-    row.addEventListener('click', (e) => {
-      if (e.target.classList.contains('room-row-close')) return;
-      switchToRoom(code);
-    });
-    row.querySelector('.room-row-close').addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeRoom(code);
-      renderRoomList();
-    });
-    list.appendChild(row);
-  });
-}
-
+/* ---------- signaling / WebRTC ---------- */
 async function handleSignal(code, event) {
   const room = rooms.get(code);
   if (!room) return;
   const msg = JSON.parse(event.data);
 
   if (msg.type === 'joined') {
-    room.myIsAdmin = msg.isFirst;
-    if (code === activeRoomCode) $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
-    if (room.myIsAdmin) addSystemMsg(code, 'You are the Admin of this room.');
+    room.isOwner = !!msg.isOwner;
+    room.myIsAdmin = msg.isFirst || room.isOwner;
+    if (code === activeRoomCode) {
+      $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
+      $('requests-btn').style.display = room.isOwner ? 'flex' : 'none';
+    }
+    renderHome();
     return;
   }
+
+  if (msg.type === 'join-request-incoming') {
+    room.pendingRequests.push({ from: msg.from, name: msg.name });
+    if (code === activeRoomCode) updateRequestsBadge();
+    return;
+  }
+
   if (msg.from === myId) return;
 
   if (msg.type === 'peer-joined') {
-    createPeerConnection(code, msg.from, true);
+    createPeerConnection(code, msg.from, true, msg.name);
   } else if (msg.type === 'offer') {
     const pc = createPeerConnection(code, msg.from, false);
     await pc.setRemoteDescription(msg.sdp);
@@ -380,7 +789,7 @@ async function handleSignal(code, event) {
     if (peer && msg.candidate) await peer.pc.addIceCandidate(msg.candidate);
   } else if (msg.type === 'peer-left') {
     room.peers.delete(msg.from);
-    if (code === activeRoomCode) updatePeerCount();
+    if (code === activeRoomCode) renderChatBody();
   }
 }
 
@@ -392,7 +801,7 @@ function sendSignal(code, obj) {
 function createPeerConnection(code, peerId, isInitiator) {
   const room = rooms.get(code);
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-  const peer = { pc, dc: null, name: 'Peer', isAdmin: false };
+  const peer = { pc, dc: null, name: 'Peer', isAdmin: false, outbox: [] };
   room.peers.set(peerId, peer);
 
   pc.onicecandidate = (e) => { if (e.candidate) sendSignal(code, { type: 'ice', candidate: e.candidate, to: peerId }); };
@@ -401,106 +810,228 @@ function createPeerConnection(code, peerId, isInitiator) {
     const dc = pc.createDataChannel('chat');
     setupDataChannel(code, dc, peerId, true);
     peer.dc = dc;
-    pc.createOffer().then((offer) => {
-      pc.setLocalDescription(offer);
-      sendSignal(code, { type: 'offer', sdp: offer, to: peerId });
-    });
+    pc.createOffer().then((offer) => { pc.setLocalDescription(offer); sendSignal(code, { type: 'offer', sdp: offer, to: peerId }); });
   } else {
     pc.ondatachannel = (e) => { peer.dc = e.channel; setupDataChannel(code, e.channel, peerId, false); };
   }
-
-  if (code === activeRoomCode) updatePeerCount();
   return pc;
+}
+
+function sendToPeer(peer, payload) {
+  if (peer.dc && peer.dc.readyState === 'open') peer.dc.send(payload);
+  else peer.outbox.push(payload);
 }
 
 function setupDataChannel(code, dc, peerId, isInitiator) {
   const room = rooms.get(code);
   dc.onopen = () => {
-    const hello = { kind: 'hello', name: myName, isAdmin: room.myIsAdmin };
-    if (isInitiator && !room.historyLoaded) hello.history = room.messageLog;
+    const peer = room.peers.get(peerId);
+    if (!peer) return;
+    const hello = { kind: 'hello', name: room.displayName, isAdmin: room.myIsAdmin };
+    if (isInitiator && room.mode === 'group' && !room.historyLoaded) hello.history = room.messageLog;
     dc.send(JSON.stringify(hello));
-    if (code === activeRoomCode) updatePeerCount();
+    peer.outbox.forEach((payload) => dc.send(payload));
+    peer.outbox = [];
+    if (code === activeRoomCode) renderChatBody();
   };
-  dc.onclose = () => { if (code === activeRoomCode) updatePeerCount(); };
+  dc.onclose = () => { if (code === activeRoomCode) renderChatBody(); };
   dc.onmessage = (e) => {
     const data = JSON.parse(e.data);
     const peer = room.peers.get(peerId);
+    if (!peer) return;
 
     if (data.kind === 'hello') {
       peer.name = data.name;
       peer.isAdmin = data.isAdmin;
-      if (data.history && !room.historyLoaded) {
+      if (room.mode === 'dmhub') {
+        if (!room.threads.has(peerId)) room.threads.set(peerId, { name: data.name, messageLog: [], unread: 0 });
+        else room.threads.get(peerId).name = data.name;
+        saveThreads(code);
+        if (code === activeRoomCode && room.activeThreadPeerId === null) renderChatBody();
+        renderHome();
+      } else if (data.history && !room.historyLoaded) {
         room.historyLoaded = true;
-        const existingIds = new Set(room.messageLog.map(m => m.id));
+        const existingIds = new Set(room.messageLog.map((m) => m.id));
         data.history.forEach((m) => { if (!existingIds.has(m.id)) room.messageLog.push(m); });
-        room.messageLog.sort((a,b) => a.ts - b.ts);
+        room.messageLog.sort((a, b) => a.ts - b.ts);
         saveRoomLog(code);
-        if (code === activeRoomCode) renderActiveMessages();
+        if (code === activeRoomCode) renderChatBody();
       }
     } else if (data.kind === 'text') {
-      const entry = { id: data.id, name: data.name, text: data.text, isAdmin: data.isAdmin, ts: data.ts };
-      room.messageLog.push(entry);
-      saveRoomLog(code);
-      if (code === activeRoomCode) { renderMsg(entry.name, entry.text, false, entry.isAdmin); }
-      else { room.unread++; }
+      const entry = { id: data.id, name: data.name, text: data.text, isAdmin: data.isAdmin, ts: data.ts, replyTo: data.replyTo || null };
+      if (room.mode === 'dmhub') {
+        if (!room.threads.has(peerId)) room.threads.set(peerId, { name: data.name, messageLog: [], unread: 0 });
+        const thread = room.threads.get(peerId);
+        thread.messageLog.push(entry);
+        saveThreads(code);
+        if (code === activeRoomCode && room.activeThreadPeerId === peerId) renderMsg(Object.assign({}, entry, { mine: false }));
+        else thread.unread++;
+        if (code === activeRoomCode && room.activeThreadPeerId === null) renderChatBody();
+        renderHome();
+      } else {
+        room.messageLog.push(entry);
+        saveRoomLog(code);
+        if (code === activeRoomCode) renderMsg(Object.assign({}, entry, { mine: false }));
+        else room.unread++;
+        renderHome();
+      }
     } else if (data.kind === 'file') {
-      if (code === activeRoomCode) renderFileMsg(data.name, data.filename, data.mime, data.b64, false, data.isAdmin);
-      else room.unread++;
+      if (room.mode === 'dmhub') {
+        if (code === activeRoomCode && room.activeThreadPeerId === peerId) renderFileMsg(data.name, data.filename, data.mime, data.b64, false, data.isAdmin);
+        else if (room.threads.has(peerId)) room.threads.get(peerId).unread++;
+        renderHome();
+      } else {
+        if (code === activeRoomCode) renderFileMsg(data.name, data.filename, data.mime, data.b64, false, data.isAdmin);
+        else room.unread++;
+        renderHome();
+      }
     }
   };
 }
 
+/* ---------- messaging ---------- */
 function sendText() {
   const room = rooms.get(activeRoomCode);
   if (!room) return;
   const input = $('text-input');
   const text = input.value.trim();
   if (!text) return;
-  const entry = { id: myId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,6), name: myName, text: text, isAdmin: room.myIsAdmin, ts: Date.now() };
-  broadcast(activeRoomCode, Object.assign({ kind: 'text' }, entry));
-  room.messageLog.push(entry);
-  saveRoomLog(activeRoomCode);
-  renderMsg(myName, text, true, room.myIsAdmin);
+  const entry = {
+    id: myId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    name: room.displayName, text: text, isAdmin: room.myIsAdmin, ts: Date.now(),
+    replyTo: replyingTo ? { id: replyingTo.id, name: replyingTo.name, text: replyingTo.text } : null
+  };
+
+  if (room.mode === 'dmhub') {
+    if (!room.activeThreadPeerId) return;
+    const peer = room.peers.get(room.activeThreadPeerId);
+    if (peer) sendToPeer(peer, JSON.stringify(Object.assign({ kind: 'text' }, entry)));
+    const thread = room.threads.get(room.activeThreadPeerId);
+    thread.messageLog.push(entry);
+    saveThreads(activeRoomCode);
+  } else {
+    room.peers.forEach((peer) => sendToPeer(peer, JSON.stringify(Object.assign({ kind: 'text' }, entry))));
+    room.messageLog.push(entry);
+    saveRoomLog(activeRoomCode);
+  }
+  renderMsg(Object.assign({}, entry, { mine: true }));
   input.value = '';
+  cancelReply();
+  renderHome();
 }
+
+function startReply(entry) {
+  const room = rooms.get(activeRoomCode);
+  replyingTo = { id: entry.id, name: entry.mine ? room.displayName : entry.name, text: entry.text };
+  $('reply-preview-text').textContent = replyingTo.name + ': ' + replyingTo.text;
+  $('reply-bar').style.display = 'flex';
+  $('text-input').focus();
+}
+function cancelReply() { replyingTo = null; $('reply-bar').style.display = 'none'; }
 
 function sendFile(e) {
   const room = rooms.get(activeRoomCode);
   if (!room) return;
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 4 * 1024 * 1024) { addSystemMsg(activeRoomCode, 'File too large for this demo (max 4MB).'); return; }
+  if (file.size > 4 * 1024 * 1024) return;
   const reader = new FileReader();
   reader.onload = () => {
     const b64 = reader.result;
-    broadcast(activeRoomCode, { kind: 'file', name: myName, filename: file.name, mime: file.type, b64: b64, isAdmin: room.myIsAdmin });
-    renderFileMsg(myName, file.name, file.type, b64, true, room.myIsAdmin);
+    const payload = { kind: 'file', name: room.displayName, filename: file.name, mime: file.type, b64: b64, isAdmin: room.myIsAdmin };
+    if (room.mode === 'dmhub' && room.activeThreadPeerId) {
+      const peer = room.peers.get(room.activeThreadPeerId);
+      if (peer) sendToPeer(peer, JSON.stringify(payload));
+    } else if (room.mode === 'group') {
+      room.peers.forEach((peer) => sendToPeer(peer, JSON.stringify(payload)));
+    }
+    renderFileMsg(room.displayName, file.name, file.type, b64, true, room.myIsAdmin);
   };
   reader.readAsDataURL(file);
   e.target.value = '';
 }
+$('file-btn').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', sendFile);
+$('send-btn').addEventListener('click', sendText);
+$('text-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendText(); });
+$('reply-cancel').addEventListener('click', cancelReply);
+$('leave-btn').addEventListener('click', () => closeRoom(activeRoomCode));
 
-function broadcast(code, obj) {
-  const room = rooms.get(code);
-  if (!room) return;
-  const payload = JSON.stringify(obj);
-  room.peers.forEach((peer) => { if (peer.dc && peer.dc.readyState === 'open') peer.dc.send(payload); });
-}
-
-function renderActiveMessages() {
+$('chat-back-btn').addEventListener('click', () => {
   const room = rooms.get(activeRoomCode);
+  if (room && room.mode === 'dmhub' && room.activeThreadPeerId !== null) {
+    room.activeThreadPeerId = null;
+    renderChatBody();
+  } else {
+    activeRoomCode = null;
+    showScreen('home');
+    renderHome();
+  }
+});
+
+/* ---------- rendering ---------- */
+function renderChatBody() {
+  const room = rooms.get(activeRoomCode);
+  if (!room) return;
   const container = $('messages');
   container.innerHTML = '';
-  if (!room) return;
-  room.messageLog.forEach((m) => renderMsg(m.name, m.text, m.id.indexOf(myId) === 0, m.isAdmin));
+
+  if (room.mode === 'dmhub' && room.activeThreadPeerId === null) {
+    $('room-title').childNodes[0].textContent = 'Your Chat ID: ' + room.code + ' ';
+    $('my-admin-badge').style.display = 'none';
+    $('peer-count').textContent = room.threads.size + ' conversation' + (room.threads.size === 1 ? '' : 's');
+    $('input-bar').style.display = 'none';
+    $('reply-bar').style.display = 'none';
+
+    if (room.threads.size === 0) {
+      container.innerHTML = '<div class="empty-note">Nobody has messaged this Chat ID yet. Share "' + escapeHtml(room.code) + '" so people can reach you.</div>';
+      return;
+    }
+    [...room.threads.entries()].forEach(([peerId, thread]) => {
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      const last = thread.messageLog[thread.messageLog.length - 1];
+      const subtitle = (last ? last.text : 'No messages yet').slice(0, 42) + (thread.unread ? ' \u00b7 ' + thread.unread + ' new' : '');
+      row.innerHTML = '<div class="list-row-main"><b>' + escapeHtml(thread.name) + '</b><span>' + escapeHtml(subtitle) + '</span></div>';
+      row.addEventListener('click', () => {
+        room.activeThreadPeerId = peerId;
+        thread.unread = 0;
+        renderChatBody();
+        renderHome();
+      });
+      container.appendChild(row);
+    });
+    return;
+  }
+
+  $('input-bar').style.display = 'flex';
+
+  if (room.mode === 'dmhub' && room.activeThreadPeerId !== null) {
+    const thread = room.threads.get(room.activeThreadPeerId);
+    const peer = room.peers.get(room.activeThreadPeerId);
+    $('room-title').childNodes[0].textContent = (thread ? thread.name : 'Chat') + ' ';
+    $('my-admin-badge').style.display = 'none';
+    $('peer-count').textContent = (peer && peer.dc && peer.dc.readyState === 'open') ? 'Online' : 'Offline';
+    (thread ? thread.messageLog : []).forEach((m) => renderMsg(Object.assign({}, m, { mine: m.id.indexOf(myId) === 0 })));
+    return;
+  }
+
+  // plain group room
+  $('room-title').childNodes[0].textContent = 'Room: ' + room.code + ' ';
+  $('my-admin-badge').style.display = room.myIsAdmin ? 'inline-block' : 'none';
+  const openPeers = [...room.peers.values()].filter((p) => p.dc && p.dc.readyState === 'open').length;
+  $('peer-count').textContent = openPeers + ' connected';
+  room.messageLog.forEach((m) => renderMsg(Object.assign({}, m, { mine: m.id.indexOf(myId) === 0 })));
 }
 
-function renderMsg(name, text, mine, isAdmin) {
+function renderMsg(entry) {
+  const { id, name, text, mine, isAdmin, replyTo } = entry;
   const div = document.createElement('div');
   div.className = 'msg ' + (mine ? 'mine' : 'theirs');
-  const senderLine = mine ? '' :
-    '<div class="sender">' + escapeHtml(name) + (isAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</div>';
-  div.innerHTML = senderLine + escapeHtml(text);
+  const senderLine = mine ? '' : '<div class="sender">' + escapeHtml(name) + (isAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</div>';
+  const quoteLine = replyTo ? '<div class="quote">' + escapeHtml(replyTo.name) + ': ' + escapeHtml(replyTo.text.slice(0, 60)) + '</div>' : '';
+  div.innerHTML = senderLine + quoteLine + escapeHtml(text);
+  div.addEventListener('click', () => startReply({ id, name, text, mine }));
   $('messages').appendChild(div);
   $('messages').scrollTop = $('messages').scrollHeight;
 }
@@ -508,27 +1039,18 @@ function renderMsg(name, text, mine, isAdmin) {
 function renderFileMsg(name, filename, mime, b64, mine, isAdmin) {
   const div = document.createElement('div');
   div.className = 'msg ' + (mine ? 'mine' : 'theirs');
-  const senderLine = mine ? '' :
-    '<div class="sender">' + escapeHtml(name) + (isAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</div>';
-  div.innerHTML = senderLine +
-    '\uD83D\uDCCE ' + escapeHtml(filename) + '<br><a class="file-link" href="' + b64 + '" download="' + escapeHtml(filename) + '">Download</a>';
+  const senderLine = mine ? '' : '<div class="sender">' + escapeHtml(name) + (isAdmin ? ' <span class="admin-badge">ADMIN</span>' : '') + '</div>';
+  div.innerHTML = senderLine + '\uD83D\uDCCE ' + escapeHtml(filename) + '<br><a class="file-link" href="' + b64 + '" download="' + escapeHtml(filename) + '">Download</a>';
   $('messages').appendChild(div);
   $('messages').scrollTop = $('messages').scrollHeight;
 }
 
-function addSystemMsg(code, text) {
-  if (code !== activeRoomCode) return;
-  const div = document.createElement('div');
-  div.className = 'msg system';
-  div.textContent = text;
-  $('messages').appendChild(div);
-  $('messages').scrollTop = $('messages').scrollHeight;
-}
-
-function updatePeerCount() {
+function updateRequestsBadge() {
   const room = rooms.get(activeRoomCode);
-  const open = room ? [...room.peers.values()].filter(p => p.dc && p.dc.readyState === 'open').length : 0;
-  $('peer-count').textContent = open + ' connected';
+  const badge = $('requests-badge');
+  const count = room ? room.pendingRequests.length : 0;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+  badge.textContent = count;
 }
 
 function escapeHtml(str) {
@@ -536,6 +1058,16 @@ function escapeHtml(str) {
   d.textContent = str;
   return d.innerHTML;
 }
+
+/* ---------- boot ---------- */
+window.addEventListener('load', () => {
+  if (!myName) { showScreen('onboarding'); return; }
+  connectBeacon();
+  const saved = getSavedRooms();
+  saved.forEach((r) => openRoom(r.code, r.category, r.mode, r.displayName));
+  showScreen('home');
+  renderHome();
+});
 </script>
 </body>
 </html>
